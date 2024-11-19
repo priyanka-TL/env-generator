@@ -1,3 +1,13 @@
-To generate requirement.txt(package manager)
+# Env Generator
+
+## Run application
+
+python3 app.py
+
+## To generate requirement.txt(package manager)
+
 pip3 freeze > requirements.txt
 
+## Activate virtual env
+
+source env/bin/activate
