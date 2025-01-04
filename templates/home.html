@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Environment File Generator</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f9f9f9;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        .container {
+            background-color: #fff;
+            padding: 40px;
+            box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+            width: 100%;
+            max-width: 600px;
+        }
+
+        h1 {
+            color: #333;
+            text-align: center;
+            font-size: 24px;
+            margin-bottom: 20px;
+        }
+
+        label {
+            font-size: 16px;
+            color: #555;
+            margin-bottom: 8px;
+            display: block;
+        }
+
+        input[type="url"] {
+            width: 100%;
+            padding: 10px;
+            margin: 8px 0 20px 0;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            font-size: 16px;
+            color: white;
+            background-color: #4CAF50;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        .message {
+            margin-top: 20px;
+            font-size: 16px;
+            color: #4CAF50;
+            text-align: center;
+        }
+
+        .message.error {
+            color: #f44336;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Environment File Generator</h1>
+        <form action="/fetch" method="POST">
+            <label for="github_url">Enter GitHub URL to .env.sample file:</label>
+            <input type="url" id="github_url" name="github_url" placeholder="https://github.com/user/repo/.env.sample" required>
+            <button type="submit">Fetch</button>
+        </form>
+        <!-- Example success or error message -->
+        {% if error_message %}
+        <div class="message error">
+            {{ error_message }}
+        </div>
+        {% endif %}
+    </div>
+
+</body>
+</html>
