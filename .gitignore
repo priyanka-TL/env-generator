@@ -46,7 +46,5 @@ gmon.out
 .DS_Store
 
 *.exe
-
-
-
 env
+venv/

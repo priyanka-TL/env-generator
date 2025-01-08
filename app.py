@@ -51,42 +51,6 @@ def parse_env_file(env_content):
             print(f"Skipping empty or malformed line: {line}")
     return env_variables
 
-# def is_html(content):
-#     """Check if the content is an HTML page based on the presence of HTML doctype or tags."""
-#     # Check for HTML doctype or common HTML tags to identify HTML content
-#     html_patterns = [
-#         r"<!DOCTYPE\s+html>",  # Doctype for HTML5
-#         r"<html[^>]*>",         # Opening <html> tag
-#         r"<body[^>]*>",         # Opening <body> tag
-#         r"</html>",             # Closing </html> tag
-#         r"</body>",             # Closing </body> tag
-#     ]
-    
-#     # Search for any of the HTML patterns
-#     if any(re.search(pattern, content, re.IGNORECASE) for pattern in html_patterns):
-#         return True
-#     return False
-
-# def parse_env_file(github_url):
-#     """Fetch the content of a .env file from a GitHub URL."""
-#     try:
-#         raw_url = convert_to_raw_url(github_url)
-#         response = requests.get(raw_url)
-#         response.raise_for_status()
-        
-#         # Check if the response is HTML (indicating invalid .env content)
-#         if is_html(response.text):
-#             print (is_html(response.text))
-#             return "Error: The file is an HTML page, not a valid .env file."
-        
-#         # Optionally: Further check if content appears to be a valid .env file
-#         if not any("=" in line for line in response.text.splitlines()):
-#             return "Error: The file does not contain valid key-value pairs."
-        
-#         return response.text
-#     except requests.RequestException as e:
-#         return f"Error fetching .env file: {str(e)}"
-
 def generate_questions(env_variables):
     """Use OpenAI API to generate a readable question for an environment variable."""
     # prompt = f"Create a question for key '{key}' and value '{value}'."
@@ -95,19 +59,18 @@ def generate_questions(env_variables):
         prompt += f"- {key} with value {value}\n"
     print(f"Prompt: {prompt}") 
     try:
-        # response = openai.ChatCompletion.create(
-        #     model="gpt-4o-mini",
-        #     messages=[
-        #         {"role": "system", "content": "You are a helpful assistant."},
-        #         {"role": "user", "content": prompt}
-        #     ],
-        #     max_tokens=500
-        # )
-        # print(f"Response: {response}") 
-        # questions = response['choices'][0]['message']['content'].strip()
-        # question_list = questions.split("\n")
-        ['What is the value of ACCESS_TOKEN_SECRET?  ', "What is the API_DOC_URL for the application's documentation?  ", 'What is the endpoint for retrieving user profile details?  ', 'What is the minimum approval required in the application?  ', 'What types of resources are defined in RESOURCE_TYPES?  ', 'What is the region of the OCI bucket?  ', 'What is the maximum length for resource notes?  ', 'Is logging disabled in the application?  ', 'What is the URL for the Kafka server?  ', 'What authentication method is being used in the application?  ', 'What is the OCI access key ID?  ', 'What is the Azure account key?  ', 'Are observations enabled in projects?  ', 'What is the value for CLEAR_INTERNAL_CACHE?  ', 'What is the Kafka topic used for project publishing?  ', 'What is the host URL for the user service?  ', 'What is the region of the AWS bucket?  ', 'What is the endpoint for publishing templates and tasks?  ', 'Is review required before proceeding?  ', 'What is the base URL for the user service?']
-        question_list = ['What is the value of ACCESS_TOKEN_SECRET?  ', "What is the API_DOC_URL for the application's documentation?  ", 'What is the endpoint for retrieving user profile details?  ', 'What is the minimum approval required in the application?  ', 'What types of resources are defined in RESOURCE_TYPES?  ', 'What is the region of the OCI bucket?  ', 'What is the maximum length for resource notes?  ', 'Is logging disabled in the application?  ', 'What is the URL for the Kafka server?  ', 'What authentication method is being used in the application?  ', 'What is the OCI access key ID?  ', 'What is the Azure account key?  ', 'Are observations enabled in projects?  ', 'What is the value for CLEAR_INTERNAL_CACHE?  ', 'What is the Kafka topic used for project publishing?  ', 'What is the host URL for the user service?  ', 'What is the region of the AWS bucket?  ', 'What is the endpoint for publishing templates and tasks?  ', 'Is review required before proceeding?  ', 'What is the base URL for the user service?']
+        response = openai.ChatCompletion.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": "You are a helpful assistant."},
+                {"role": "user", "content": prompt}
+            ],
+            max_tokens=500
+        )
+        print(f"Response: {response}") 
+        questions = response['choices'][0]['message']['content'].strip()
+        question_list = questions.split("\n")
+        # question_list = ['What is the value of ACCESS_TOKEN_SECRET?  ', "What is the API_DOC_URL for the application's documentation?  ", 'What is the endpoint for retrieving user profile details?  ', 'What is the minimum approval required in the application?  ', 'What types of resources are defined in RESOURCE_TYPES?  ', 'What is the region of the OCI bucket?  ', 'What is the maximum length for resource notes?  ', 'Is logging disabled in the application?  ', 'What is the URL for the Kafka server?  ', 'What authentication method is being used in the application?  ', 'What is the OCI access key ID?  ', 'What is the Azure account key?  ', 'Are observations enabled in projects?  ', 'What is the value for CLEAR_INTERNAL_CACHE?  ', 'What is the Kafka topic used for project publishing?  ', 'What is the host URL for the user service?  ', 'What is the region of the AWS bucket?  ', 'What is the endpoint for publishing templates and tasks?  ', 'Is review required before proceeding?  ', 'What is the base URL for the user service?']
         print(question_list,'question_list')
         return question_list
     except Exception as e:
@@ -140,10 +103,10 @@ def fetch():
     session['questions'] = generate_questions(selected_env_variables)
     session['selected_keys'] = selected_keys
 
-    return redirect(url_for('questions_paginated'))
+    return redirect(url_for('questions'))
 
-@app.route('/questions_paginated', methods=['GET', 'POST'])
-def questions_paginated():
+@app.route('/questions', methods=['GET', 'POST'])
+def questions():
     questions = session.get('questions', [])
     selected_keys = session.get('selected_keys', [])
     env_variables = session.get('env_variables', {})
@@ -171,12 +134,12 @@ def questions_paginated():
         session['answers'] = answers
 
         if page < total_pages:
-            return redirect(url_for('questions_paginated', page=page + 1))
+            return redirect(url_for('questions', page=page + 1))
         else:
             return redirect(url_for('generate'))
 
     return render_template(
-        'questions_paginated.html',
+        'questions.html',
         current_questions=current_questions,
         page=page,
         total_pages=total_pages,
