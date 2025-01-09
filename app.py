@@ -82,25 +82,50 @@ def home():
     return render_template('home.html')
 
 @app.route('/fetch', methods=['POST'])
+@app.route('/fetch', methods=['POST'])
 def fetch():
-    github_url = request.form['github_url']
+    # Get the selected service from the form
+    service = request.form['service']
+
+    # Construct the GitHub URL based on the selected service
+    base_url = "https://raw.githubusercontent.com/ELEVATE-Project/"
+    github_url_map = {
+        "survey-project-creation-service": f"{base_url}/survey-project-creation-service/refs/heads/develop/src/.env.sample",
+        "mentoring": f"{base_url}/mentoring/refs/heads/develop/src/.env.sample",
+        "project-service": f"{base_url}/project-service/refs/heads/develop/.env.sample",
+        "samiksha-service": f"{base_url}/samiksha-service/refs/heads/develop/.env.sample",
+        "user": f"{base_url}/user/refs/heads/develop/src/.env.sample",
+        "entity-management": f"{base_url}/entity-management/refs/heads/develop/src/.env.sample",
+        "scheduler": f"{base_url}/scheduler/refs/heads/develop/src/.env.sample",
+        "notification": f"{base_url}/notification/refs/heads/develop/src/.env.sample",
+        "interface-service": f"{base_url}/interface-service/refs/heads/develop/src/.env.sample",
+    }
+
+    github_url = github_url_map.get(service)
+    if not github_url:
+        return render_template(
+            'home.html',
+            error_message="Invalid service selected. Please try again."
+        )
+
+    # Fetch the .env file content
     env_content = fetch_env_file(github_url)
 
     if env_content.startswith('http') or "Error" in env_content:
-        # Return an error message that will be displayed in the HTML
+        # Return an error message if the .env file cannot be fetched
         return render_template('home.html', error_message=f"Error fetching .env file: {env_content}")
 
     env_variables = parse_env_file(env_content)
-    print(env_variables,'hhh')
     session['env_variables'] = env_variables
     session['answers'] = {}
     session['index'] = 0  # Track the current question index
-    
+
     # Randomly select MAX_QUESTIONS number of keys to ask
     keys = list(env_variables.keys())
     selected_keys = random.sample(keys, app.config['MAX_QUESTIONS'])
     selected_env_variables = {key: env_variables[key] for key in selected_keys}
-    session['questions'] = generate_questions(selected_env_variables)
+    session['questions'] = []
+    # generate_questions(selected_env_variables)
     session['selected_keys'] = selected_keys
 
     return redirect(url_for('questions'))
