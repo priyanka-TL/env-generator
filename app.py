@@ -150,6 +150,12 @@ def fetch():
             services=SERVICE_URLS.keys(),
             error_message="Invalid service selected. Please try again."
         )
+    
+    # Clear session data
+    session.pop('mandatory', None)
+    session.pop('non_mandatory', None)
+    session.pop('env_sample', None)
+    session.pop('user_answers', None)
 
     # Fetch env files
     env_url = SERVICE_URLS[service_name]
