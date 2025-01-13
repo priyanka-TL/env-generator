@@ -1,7 +1,7 @@
 import os
 import re
 import requests
-from flask import Flask, request, render_template, redirect, url_for, session, jsonify, send_file
+from flask import Flask, request, render_template, redirect, url_for, session, send_file
 from io import BytesIO
 import openai
 from dotenv import load_dotenv
@@ -268,29 +268,66 @@ def validate_env_variables():
     If any variable is missing, raise an error and provide a table format.
     """
     required_env_vars = [
-        "SECRET_KEY",
-        "OPENAI_API_KEY",
-        "CLOUD_STORAGE_PROVIDER",
-        "CLOUD_STORAGE_ACCOUNTNAME",
-        "CLOUD_STORAGE_SECRET",
-        "CLOUD_STORAGE_REGION",
-        "CLOUD_ENDPOINT",
-        "CLOUD_STORAGE_BUCKETNAME",
-        "PUBLIC_ASSET_BUCKETNAME",
-        "CLOUD_STORAGE_BUCKET_TYPE"
+        {
+            "name": "SECRET_KEY",
+            "description": "Flask secret key for session encryption"
+        },
+        {
+            "name": "OPENAI_API_KEY",
+            "description": "API key for OpenAI services"
+        },
+        {
+            "name": "CLOUD_STORAGE_PROVIDER",
+            "description": "Cloud storage provider in azure, aws, gcloud, oci or s3"
+        },
+        {
+            "name": "CLOUD_STORAGE_ACCOUNTNAME",
+            "description": "Cloud storage identity [Azure Account Name, AWS Access Key, GCP Client Email, OCI S3 Access Key or S3 Access Key]"
+        },
+        {
+            "name": "CLOUD_STORAGE_SECRET",
+            "description": "Cloud storage secret"
+        },
+        {
+            "name": "CLOUD_STORAGE_REGION",
+            "description": "Cloud storage region for AWS and OCI only"
+        },
+        {
+            "name": "CLOUD_ENDPOINT",
+            "description": "Cloud storage endpoint for S3 and OCI only"
+        },
+        {
+            "name": "CLOUD_STORAGE_BUCKETNAME",
+            "description": "Cloud storage default bucket name"
+        },
+        {
+            "name": "PUBLIC_ASSET_BUCKETNAME",
+            "description": "Cloud storage public bucket name"
+        },
+        {
+            "name": "CLOUD_STORAGE_BUCKET_TYPE",
+            "description": "Cloud storage default bucket type"
+        }
     ]
 
-    missing_vars = [var for var in required_env_vars if not os.getenv(var)]
+    # Extract missing variables
+    missing_vars = [var for var in required_env_vars if not os.getenv(var["name"])]
 
     if missing_vars:
         # Create a table format for missing variables
         table_header = f"{'Variable Name':<30} | {'Description':<40}\n" + "-" * 73
-        table_rows = "\n".join([f"{var:<30} | {'Set this variable in the .env file':<40}" for var in missing_vars])
-        table_message = f"{table_header}\n{table_rows}"
+        table_rows = "\n".join([
+            f"{var['name']:<30} | {var['description']:<40}" 
+            for var in missing_vars
+        ])
+
+        message = (
+            "The following required environment variables are missing or not set:\n"
+            "Please ensure that all required variables are defined in the environment or .env file.\n"
+        )
 
         # Raise an error with only the table format
-        raise EnvironmentError(f"\n{table_message}")
-
+        raise EnvironmentError(f"\n{message}{table_header}\n{table_rows}")
 
 # Call the validation function before starting the app
 try:
