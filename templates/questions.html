@@ -4,220 +4,235 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Review and Update Values</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css">
-
-
+    <title>Review and Update Environment Variables</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/css/bootstrap.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/js/bootstrap.bundle.min.js"></script>
     <style>
         body {
             background-color: #f4f5f7;
             font-family: 'Roboto', sans-serif;
-            position: relative; /* To allow positioning of the home button */
+            margin: 0;
+            padding: 0;
         }
 
         .container {
-            max-width: 1200px;
-            background-color: #fff;
+            display: flex;
+            flex-direction: row;
+            height: 95vh;
+            margin: 20px auto;
             border-radius: 12px;
-            padding: 50px;
-            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
-            margin: 60px auto;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
         }
 
-        h1 {
-            text-align: center;
-            font-size: 2.0rem;
-            color: #0056b3;
-            margin-bottom: 50px;
+        .left-container,
+        .right-container {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            border-radius: 12px;
+        }
+
+        .left-container {
+            background-color: #ffffff;
+            margin-right: 10px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        }
+
+        .right-container {
+            background-color: #ffffff;
+            border-left: 2px solid #ddd;
+        }
+
+        h3 {
+            font-size: 1.5rem;
+            color: #333;
+            margin-bottom: 20px;
         }
 
         .form-group {
-            margin-bottom: 30px;
+            margin-bottom: 15px;
         }
 
         .form-group label {
             font-weight: 500;
-            font-size: 1.1rem;
-            color: #333;
-            margin-bottom: 10px;
             display: block;
+            margin-bottom: 5px;
         }
 
         .form-control {
-            border-radius: 10px;
-            font-size: 1.0rem;
-            padding: 12px;
-            border: 1px solid #ccc;
+            border-radius: 5px;
+            padding: 10px;
         }
 
-        .form-check-inline {
-            margin-right: 20px;
+        .env-container pre {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            background-color: #ffffff;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            height: auto;
+            overflow-y: auto;
         }
 
-        .form-check-label {
-            font-size: 1rem;
+        .submit-button {
+            display: flex;
+            justify-content: flex-end;
+            margin-top: 20px;
         }
 
-        .btn-custom {
-            background-color: #6c757d; /* Updated Previous button color */
-            color: #fff;
-            font-weight: 500;
-            font-size: 1.2rem;
-            border-radius: 10px;
-            padding: 12px 35px;
-        }
-
-        .btn-custom:hover {
-            background-color: #5a6268;
-        }
-
-        .btn-custom-success {
-            background-color: #28a745;
-            color: #fff;
-            font-weight: 500;
-            font-size: 1.2rem;
-            border-radius: 10px;
-            padding: 12px 35px;
-        }
-
-        .btn-custom-success:hover {
-            background-color: #218838;
-        }
-
-        .pagination-text {
-            margin-top: 30px;
-            font-weight: 500;
-            text-align: center;
-            font-size: 1rem;
-        }
-
-        .divider {
-            height: 1px;
-            background-color: #ddd;
-            margin: 30px 0;
-        }
-
-        /* Updated Progress Bar Color */
-        .progress-bar {
-            background-color: #20c997; /* Teal color for the progress bar */
-            height: 0.7rem !important;
-        }
-
-        .label-input {
-            font-weight: 400 !important;
-        }
-
-        .btn-home {
-            background-color: #007bff;
-            color: #fff;
-            font-weight: 500;
-            font-size: 1.0rem;
-            border-radius: 10px;
-            padding: 8px 20px;
-            text-decoration: none;
-            display: inline-block;
-            position: absolute;
+        .home-button {
+            position: fixed;
             top: 20px;
             left: 20px;
+            background-color: #007bff;
+            color: #fff;
+            font-size: 1rem;
+            padding: 10px 15px;
+            border-radius: 5px;
+            text-decoration: none;
             display: flex;
             align-items: center;
-            justify-content: center;
+            gap: 5px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+            z-index: 999;
         }
 
-        .btn-home:hover {
+        .home-button:hover {
             background-color: #0056b3;
+            text-decoration: none;
         }
 
-        .btn-home i {
-            margin-right: 8px;
-            font-size: 1.4rem; /* Adjusted for smaller arrow */
+        .nav-tabs {
+            border-bottom: 2px solid #ddd;
+        }
+
+        .nav-tabs .nav-link {
+            font-size: 1rem;
+            color: #007bff;
+        }
+
+        .nav-tabs .nav-link.active {
+            background-color: #007bff;
+            color: #fff;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+                height: auto;
+            }
+
+            .left-container {
+                margin-right: 0;
+                margin-bottom: 10px;
+            }
+
+            .right-container {
+                border-left: none;
+            }
         }
     </style>
 </head>
 
 <body>
-    <!-- Home Button placed outside the modal, at top left -->
-    <a href="{{ url_for('home') }}" class="btn btn-home">
-        <i class="bi bi-arrow-left"></i> Home
+    <a href="/" class="home-button">
+        <i class="bi bi-house-door"></i> Home
     </a>
-
     <div class="container">
-        <h1>Review and Update Values</h1>
+        <div class="left-container">
+            <h3>Update Env Values</h3>
+            <form method="POST" id="questionsForm">
+                <ul class="nav nav-tabs" id="questionTabs" role="tablist">
+                    <li class="nav-item">
+                        <button class="nav-link active" id="mandatory-tab" data-bs-toggle="tab"
+                            data-bs-target="#mandatory" type="button" role="tab" aria-controls="mandatory"
+                            aria-selected="true">Mandatory</button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="nav-link" id="nonMandatory-tab" data-bs-toggle="tab"
+                            data-bs-target="#nonMandatory" type="button" role="tab" aria-controls="nonMandatory"
+                            aria-selected="false">Non-Mandatory</button>
+                    </li>
+                </ul>
+                <div class="tab-content" id="questionTabsContent">
+                    <div class="tab-pane fade show active" id="mandatory" role="tabpanel"
+                        aria-labelledby="mandatory-tab">
 
-        <!-- Progress Indicator -->
-        <div class="progress mb-4">
-            <div class="progress-bar" role="progressbar" style="width: {{ (page / total_pages) * 100 }}%;"
-                aria-valuenow="{{ page }}" aria-valuemin="0" aria-valuemax="{{ total_pages }}">
-                {{ (page / total_pages) * 100 | round }}%
-            </div>
-        </div>
-
-        <form method="POST" action="{{ url_for('questions', page=page) }}">
-            <div class="row">
-                {% for key, question in current_questions %}
-                <div class="col-lg-6">
-                    <div class="form-group">
-                        <label for="{{ key }}">{{ question }}</label>
-                        {% set current_value = session['answers'].get(key, env_variables.get(key)) %}
-
-                        {% if current_value == 'ON' or current_value == 'OFF' %}
-                        <div class="d-flex align-items-center">
-                            <div class="form-check form-check-inline">
-                                <input class="form-check-input" type="radio" name="{{ key }}" value="ON" {% if
-                                    current_value=='ON' %} checked {% endif %} required>
-                                <label class="form-check-label label-input">ON</label>
-                            </div>
-                            <div class="form-check form-check-inline">
-                                <input class="form-check-input" type="radio" name="{{ key }}" value="OFF" {% if
-                                    current_value=='OFF' %} checked {% endif %} required>
-                                <label class="form-check-label label-input">OFF</label>
-                            </div>
+                        {% for question in mandatory_questions %}
+                        <div class="form-group">
+                            <label>{{ question.question }}</label>
+                            <input type="text" class="form-control" id="{{ question.name }}" name="{{ question.name }}"
+                                value="{{ user_answers.get(question.name, question.value) }}" required
+                                onchange="updateEnvFile()">
                         </div>
-                        {% elif current_value == 'true' or current_value == 'false' %}
-                        <div class="d-flex align-items-center">
-                            <div class="form-check form-check-inline">
-                                <input class="form-check-input" type="radio" name="{{ key }}" value="true" {% if
-                                    current_value=='true' %} checked {% endif %} required>
-                                <label class="form-check-label label-input" >True</label>
-                            </div>
-                            <div class="form-check form-check-inline">
-                                <input class="form-check-input" type="radio" name="{{ key }}" value="false" {% if
-                                    current_value=='false' %} checked {% endif %} required>
-                                <label class="form-check-label label-input">False</label>
-                            </div>
+                        {% endfor %}
+
+                    </div>
+                    <div class="tab-pane fade" id="nonMandatory" role="tabpanel" aria-labelledby="nonMandatory-tab">
+
+                        {% for question in non_mandatory_questions %}
+                        <div class="form-group">
+                            <label>{{ question.question }}</label>
+                            <input type="text" class="form-control" id="nonmandatory-{{ question.name }}"
+                                name="{{ question.name }}" value="{{ user_answers.get(question.name, question.value) }}"
+                                onchange="updateEnvFile()">
                         </div>
-                        {% else %}
-                        <input type="text" class="form-control" id="{{ key }}" name="{{ key }}"
-                            value="{{ current_value }}" required />
-                        {% endif %}
+                        {% endfor %}
+
                     </div>
                 </div>
+                <div class="submit-button">
+                    <button type="button" class="btn btn-success" onclick="submitForm()">Submit</button>
+                </div>
+            </form>
+        </div>
+        <div class="right-container">
+            <h3>Updated .env File</h3>
+            <div id="envUpdateMessage" class="text-center" style="display: none;">
+                <p>Updating...</p>
+            </div>
+        
+            <div id="envFileContent">
+                {% for key, value in user_answers.items() %}
+                <p id="env-{{ key }}">{{ key }}=<span>{{ value }}</span></p>
                 {% endfor %}
             </div>
-
-            <div class="divider"></div>
-
-            <!-- Improved Button Alignment -->
-            <div class="d-flex justify-content-center gap-3 mt-4">
-                {% if page > 1 %}
-                <a href="{{ url_for('questions', page=page - 1) }}" class="btn btn-custom">Previous</a>
-                {% endif %}
-                {% if page < total_pages %} 
-                <button type="submit" class="btn btn-custom" style="background-color: #007bff;">Next</button>
-                {% else %}
-                <button type="submit" class="btn btn-custom-success">Submit</button>
-                {% endif %}
-            </div>
-        </form>
-
-        <div class="pagination-text">
-            <p>Page {{ page }} of {{ total_pages }}</p>
         </div>
     </div>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function updateEnvFile() {
+            const form = document.getElementById('questionsForm');
+            const formData = new FormData(form);
+            let updatedEnvContent = '';
+
+            // Show the "Updating..." message
+            document.getElementById('envUpdateMessage').style.display = 'block';
+            document.getElementById('envFileContent').style.display = 'none';
+
+            // Simulate the update process
+            setTimeout(() => {
+                formData.forEach((value, key) => {
+                    updatedEnvContent += `${key}=${value} \n`;
+                });
+
+                // Update the .env content
+                document.getElementById('envFileContent').textContent = updatedEnvContent;
+
+                // Hide the "Updating..." message and show the updated .env content
+                document.getElementById('envUpdateMessage').style.display = 'none';
+                document.getElementById('envFileContent').style.display = 'block';
+            }, 500);
+        }
+
+        function submitForm() {
+            document.getElementById('questionsForm').submit();
+        }
+    </script>
 </body>
 
 </html>

@@ -144,12 +144,26 @@
             <button type="submit">Fetch</button>
         </form>
 
-        <!-- Example success or error message -->
         {% if error_message %}
         <div class="message error">
             {{ error_message }}
         </div>
         {% endif %}
     </div>
+
+    <script>
+        // Custom validation message for the select field
+        const serviceSelect = document.getElementById('service');
+        const form = document.getElementById('serviceForm');
+
+        serviceSelect.addEventListener('invalid', () => {
+            serviceSelect.setCustomValidity("Please select a service from the list.");
+        });
+
+        serviceSelect.addEventListener('change', () => {
+            // Clear the custom message once the user selects a valid option
+            serviceSelect.setCustomValidity("");
+        });
+    </script>
 </body>
 </html>
