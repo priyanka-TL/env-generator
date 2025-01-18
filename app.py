@@ -1,9 +1,10 @@
 import os
 import re
 import requests
-from flask import Flask, request, render_template, redirect, url_for, session, send_file
+from flask import Flask, request, render_template, redirect, url_for, session, jsonify, send_file
 from io import BytesIO
 import openai
+from math import ceil
 from dotenv import load_dotenv
 
 from config import SERVICE_URLS, ENV_VARIABLES_URLS
@@ -17,6 +18,7 @@ app.secret_key = os.getenv('SECRET_KEY', 'your_default_secret_key')  # Use envir
 openai.api_key = os.getenv('OPENAI_API_KEY')
 
 app.config['MAX_QUESTIONS'] = int(os.getenv('MAX_QUESTIONS', 10))  # Configure max questions to ask
+app.config['SESSION_TYPE'] = 'filesystem' 
 
 def fetch_file_content(url):
     """Fetch the content of a .env file from a GitHub URL."""
@@ -70,7 +72,6 @@ def parse_env_file(env_content):
     return env_variables
 
 def generate_questions(env_variables):
-    # print(env_variables,'env_variables in line no 152')
     """
     Use OpenAI API to generate meaningful questions for environment variables using their keys and values.
 
@@ -81,14 +82,26 @@ def generate_questions(env_variables):
         list: A list of generated questions.
     """
     # Create a prompt using key-value pairs
-    prompt = "For the following environment variables, generate one question per key-value pair. Do not include any extra text or introduction, only the questions:\n\n"
+    prompt = (
+        "For the following environment variables, generate one clear and user-friendly question per key-value pair. "
+        "The questions should be easy to understand and should provide context about what the variable is used for. "
+        "Do not include any extra text or introduction, only the questions:\n\n"
+        "- For each key-value pair, generate a question that explains what the variable does and asks for its value.\n"
+        "- Use simple and concise language.\n"
+        "- Avoid technical jargon unless necessary.\n"
+        "- If the key name is descriptive, use it to form the question.\n"
+        "- If the key name is not descriptive, infer its purpose based on common naming conventions.\n\n"
+        "Example:\n"
+        "- For `APPLICATION_PORT=3000`, the question could be: 'What port should the application run on?'\n"
+        "- For `DATABASE_URL=postgres://user:password@localhost:5432/mydb`, the question could be: 'What is the connection URL for the database?'\n\n"
+        "Now, generate questions for the following key-value pairs:\n"
+    )
     for key, value in env_variables.items():
-        prompt += f"- {key} with value {value}\n"
-    # print(f"Prompt: {prompt}")
+        prompt += f"- {key}={value}\n"
 
     try:
         response = openai.ChatCompletion.create(
-            model="gpt-4o-mini",
+            model="gpt-4",
             messages=[
                 {"role": "system", "content": "You are a helpful assistant."},
                 {"role": "user", "content": prompt}
@@ -107,7 +120,6 @@ def generate_questions(env_variables):
 def home():
     return render_template('home.html', services=SERVICE_URLS.keys())
 
-
 def parse_env_variables_js(content):
     """
     Parses the JavaScript environment variable definitions into mandatory and non-mandatory categories.
@@ -118,7 +130,6 @@ def parse_env_variables_js(content):
     Returns:
         dict: A dictionary with 'mandatory' and 'non_mandatory' lists of variables.
     """
-
     pattern = r'([A-Z_]+):\s*{[^}]*optional:\s*(true|false)[^}]*}'
     # Find all matches
     matches = re.findall(pattern, content)
@@ -135,7 +146,6 @@ def parse_env_variables_js(content):
                 mandatory.append(var_name)
 
         return {"mandatory": mandatory, "non_mandatory": non_mandatory}
-
     else:
         raise ValueError("Could not parse the JavaScript environment variables. Ensure the object is defined correctly.")
 
@@ -169,7 +179,7 @@ def fetch():
                                error_message=f"Error fetching .env file: {env_content}")
     
     # Parse .env and JavaScript variables
-    env_variables = parse_env_file(env_content)
+    env_variables = parse_env_file(env_content)  # This returns a key-value dictionary
     parsed_variables = parse_env_variables_js(variables_content)
 
     # Generate questions using key-value pairs
@@ -206,67 +216,98 @@ def fetch():
     # Store data in session
     session['mandatory'] = combined_variables['mandatory']
     session['non_mandatory'] = combined_variables['non_mandatory']
-    session['env_sample'] = parsed_variables
-    return redirect(url_for('questions'))
+    session['env_sample'] = env_variables  # Store the key-value pairs from .env.sample
+    session['user_answers'] = {}
 
+    return redirect(url_for('questions'))
 
 @app.route('/questions', methods=['GET', 'POST'])
 def questions():
     mandatory_questions = session.get('mandatory', [])
     non_mandatory_questions = session.get('non_mandatory', [])
     user_answers = session.get('user_answers', {})
-    for question in mandatory_questions + non_mandatory_questions:
-        
-        if question['name'] not in user_answers:
-            print('user_answers not there', question['name'] )
-            user_answers[question['name']] = question['value']
-        else:
-            print(f"Key '{question['name']}' already exists with value: {user_answers[question['name']]}")
+    env_sample = session.get('env_sample', {})
+
+    current_tab = request.args.get('tab', 'mandatory')  # Default to 'mandatory'
+    page_size = app.config.get('MAX_QUESTIONS', 10)
+
+    if current_tab == 'mandatory':
+        questions = mandatory_questions
+        page_key = 'mandatory_page'
+    else:
+        questions = non_mandatory_questions
+        page_key = 'non_mandatory_page'
+
+    current_page = int(request.args.get(page_key, 1))
+    total_pages = ceil(len(questions) / page_size)
+
+    # Ensure current_page is within valid bounds
+    current_page = max(1, min(current_page, total_pages))
+    start_index = (current_page - 1) * page_size
+    end_index = start_index + page_size
+    questions_to_display = questions[start_index:end_index]
 
     if request.method == 'POST':
-        # Update user answers in the session
-        for question in mandatory_questions + non_mandatory_questions:
-            user_answers[question['name']] = request.form.get(question['name'], '')
-        
-        # Save user answers to session
-        session['user_answers'] = user_answers
+        form_data = request.form.to_dict()
 
+        # Update user_answers with submitted form data
+        for question in mandatory_questions + non_mandatory_questions:
+            question_name = question['name']
+            user_answers[question_name] = form_data.get(question_name, user_answers.get(question_name, env_sample.get(question_name, "")))
+
+        # Save the updated answers back to the session
+        session['user_answers'] = user_answers
+        session.modified = True
+
+        print("Updated user_answers:", user_answers)
+
+        # Redirect to the generate route to download the .env file
         return redirect(url_for('generate'))
 
     return render_template(
         'questions.html',
-        mandatory_questions=mandatory_questions,
-        non_mandatory_questions=non_mandatory_questions,
-        user_answers=user_answers
+        questions_to_display=questions_to_display,
+        user_answers=user_answers,
+        env_sample=env_sample,
+        current_page=current_page,
+        total_pages=total_pages,
+        tab=current_tab  # Pass the current_tab to the template
     )
+
+@app.route('/update_answer', methods=['POST'])
+def update_answer():
+    data = request.get_json()
+    key = data.get('key')
+    value = data.get('value')
+
+    if not key:
+        return jsonify({"error": "Key is required"}), 400
+
+    # Update user_answers in the session
+    user_answers = session.get('user_answers', {})
+    user_answers[key] = value
+    session['user_answers'] = user_answers
+    session.modified = True
+
+    return jsonify({"success": True, "key": key, "value": value})
 
 @app.route('/generate', methods=['GET'])
 def generate():
     user_answers = session.get('user_answers', {})
+    env_sample = session.get('env_sample', {})
 
-    base_env_vars = {
-        "CLOUD_STORAGE_PROVIDER": os.getenv('CLOUD_STORAGE_PROVIDER'),
-        "CLOUD_STORAGE_ACCOUNTNAME": os.getenv('CLOUD_STORAGE_ACCOUNTNAME'),
-        "CLOUD_STORAGE_SECRET": os.getenv('CLOUD_STORAGE_SECRET'),
-        "CLOUD_STORAGE_REGION": os.getenv('CLOUD_STORAGE_REGION'),
-        "CLOUD_ENDPOINT": os.getenv('CLOUD_ENDPOINT'),
-        "CLOUD_STORAGE_BUCKETNAME": os.getenv('CLOUD_STORAGE_BUCKETNAME'),
-        "PUBLIC_ASSET_BUCKETNAME": os.getenv('PUBLIC_ASSET_BUCKETNAME'),
-        "CLOUD_STORAGE_BUCKET_TYPE": os.getenv('CLOUD_STORAGE_BUCKET_TYPE')
+    merged_env = {
+        key: user_answers.get(key, env_sample.get(key, ""))  # Fallback to empty string if key is missing in both
+        for key in env_sample.keys()  # Use keys from env_sample to ensure all keys are included
     }
 
-    final_env_vars = {**base_env_vars, **user_answers}
+    # Generate .env content
+    env_content = "\n".join([f"{key}={value}" for key, value in merged_env.items()])
 
-    env_lines = [f"{key}={value}" for key, value in final_env_vars.items()]
-    env_content = "\n".join(env_lines)
-
-    # Creating a BytesIO object for the .env file
-    env_file = BytesIO()
-    env_file.write(env_content.encode('utf-8'))
-    env_file.seek(0)
-
-    # Send the file as an attachment with the correct .env name
-    return send_file(env_file, as_attachment=True, download_name=".env", mimetype='text/plain')
+    return (env_content, 200, {
+        'Content-Type': 'text/plain',
+        'Content-Disposition': 'attachment; filename=".env"'
+    })
 
 def validate_env_variables():
     """
