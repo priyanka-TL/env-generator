@@ -133,19 +133,20 @@ def parse_env_file(env_content):
         line = line.strip()
 
         # Skip empty lines and full-line comments
-        if not line or line.startswith("#"):
+        if not line or line.startswith("#") or line.startswith("//"):
             continue
 
         # Handle inline comments (anything after a space + #)
-        line = re.split(r'\s+#', line, maxsplit=1)[0].strip()
+        line = re.split(r'\s+#|\s+//', line, maxsplit=1)[0].strip()
 
         # Match key=value lines
         match = re.match(r'^([\w\-.]+)\s*=\s*(.+)$', line)
+        
         if match:
             key, value = match.groups()
 
             # Handle quoted values (strip surrounding quotes)
-            if value.startswith(("'", '"')) and value.endswith(("'", '"')):
+            if (value.startswith('"') and value.endswith('"')) or (value.startswith("'") and value.endswith("'")):
                 value = value[1:-1]
 
             # Remove any additional surrounding spaces
