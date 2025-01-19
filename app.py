@@ -1,13 +1,13 @@
 import os
 import re
 import requests
-from flask import Flask, request, render_template, redirect, url_for, session, jsonify, send_file
+from flask import Flask, request, render_template, redirect, url_for, session, jsonify
 from io import BytesIO
 import openai
 from math import ceil
 from dotenv import load_dotenv
 
-from config import SERVICE_URLS, ENV_VARIABLES_URLS
+from config import SERVICE_URLS, ENV_VARIABLES_URLS, REPLACEABLE_ENV_VARIABLES
 load_dotenv()
 
 # Initialize Flask app
@@ -136,6 +136,7 @@ def parse_env_variables_js(content):
 
     mandatory = []
     non_mandatory = []
+    all_keys = []
 
     if matches:
         for var_name, var_optional in matches:
@@ -144,8 +145,18 @@ def parse_env_variables_js(content):
                 non_mandatory.append(var_name)
             else:
                 mandatory.append(var_name)
+            all_keys.append(var_name)
+        
+        # Extract default values
+        default_pattern = r'([A-Z_]+):\s*{[^}]*default:\s*([^,}]+)[^}]*}'
+        default_matches = re.findall(default_pattern, content)
 
-        return {"mandatory": mandatory, "non_mandatory": non_mandatory}
+        default_values = {}
+        for var_name, default_value in default_matches:
+            default_value = default_value.strip().strip('"').strip("'")
+            default_values[var_name] = default_value
+
+        return {"mandatory": mandatory, "non_mandatory": non_mandatory, "all_keys": all_keys, "default_values": default_values}
     else:
         raise ValueError("Could not parse the JavaScript environment variables. Ensure the object is defined correctly.")
 
@@ -181,6 +192,13 @@ def fetch():
     # Parse .env and JavaScript variables
     env_variables = parse_env_file(env_content)  # This returns a key-value dictionary
     parsed_variables = parse_env_variables_js(variables_content)
+    # Extract default values
+    default_values = parsed_variables.get('default_values', {})
+
+    # Add missing keys from envVariable.js to the non-mandatory section
+    for key in parsed_variables.get('all_keys', []):
+        if key not in env_variables:
+            env_variables[key] = default_values.get(key, "")
 
     # Generate questions using key-value pairs
     mandatory_questions = generate_questions({
@@ -258,9 +276,6 @@ def questions():
         # Save the updated answers back to the session
         session['user_answers'] = user_answers
         session.modified = True
-
-        print("Updated user_answers:", user_answers)
-
         # Redirect to the generate route to download the .env file
         return redirect(url_for('generate'))
 
@@ -296,17 +311,37 @@ def generate():
     user_answers = session.get('user_answers', {})
     env_sample = session.get('env_sample', {})
 
-    merged_env = {
-        key: user_answers.get(key, env_sample.get(key, ""))  # Fallback to empty string if key is missing in both
-        for key in env_sample.keys()  # Use keys from env_sample to ensure all keys are included
-    }
+    # Track which variables have been updated
+    updated_variables = []
+
+    # Merge user answers with env_sample
+    merged_env = {}
+    for key in env_sample.keys():
+        user_value = user_answers.get(key)
+        sample_value = env_sample.get(key, "")
+
+        # Use the user's value if it exists, otherwise fallback to the sample value
+        merged_env[key] = user_value if user_value is not None else sample_value
+
+        # Check if the variable is in the replaceable list and has been updated
+        if REPLACEABLE_ENV_VARIABLES and key in REPLACEABLE_ENV_VARIABLES:
+            # Fetch the value from os.getenv
+            env_value = os.getenv(key)
+            if env_value is not None:
+                merged_env[key] = env_value
+                updated_variables.append(key)
 
     # Generate .env content
     env_content = "\n".join([f"{key}={value}" for key, value in merged_env.items()])
 
+    # Generate a report of updated variables
+    update_report = "; ".join([f"{key} was updated to: {merged_env.get(key)}" for key in updated_variables])
+
+    # Return the .env file and the update report
     return (env_content, 200, {
         'Content-Type': 'text/plain',
-        'Content-Disposition': 'attachment; filename=".env"'
+        'Content-Disposition': 'attachment; filename=".env"',
+        'X-Updated-Variables': update_report  # Use a delimiter like "; " instead of newlines
     })
 
 def validate_env_variables():
