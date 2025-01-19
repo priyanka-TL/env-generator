@@ -22,3 +22,15 @@ ENV_VARIABLES_URLS = {
     "notification": f"{GITHUB_BASE_URL}/notification/refs/heads/develop/src/envVariables.js",
     "interface-service": f"{GITHUB_BASE_URL}/interface-service/refs/heads/develop/src/envVariables.js",
 }
+
+# Define which environment variables need to be replaced
+REPLACEABLE_ENV_VARIABLES = {
+    "CLOUD_STORAGE_PROVIDER",
+    "CLOUD_STORAGE_ACCOUNTNAME",
+    "CLOUD_STORAGE_SECRET",
+    "CLOUD_STORAGE_REGION",
+    "CLOUD_ENDPOINT",
+    "CLOUD_STORAGE_BUCKETNAME",
+    "PUBLIC_ASSET_BUCKETNAME",
+    "CLOUD_STORAGE_BUCKET_TYPE",
+}

@@ -1,13 +1,13 @@
 import os
 import re
 import requests
-from flask import Flask, request, render_template, redirect, url_for, session, jsonify, send_file
+from flask import Flask, request, render_template, redirect, url_for, session, jsonify
 from io import BytesIO
 import openai
 from math import ceil
 from dotenv import load_dotenv
 
-from config import SERVICE_URLS, ENV_VARIABLES_URLS
+from config import SERVICE_URLS, ENV_VARIABLES_URLS, REPLACEABLE_ENV_VARIABLES
 load_dotenv()
 
 # Initialize Flask app
@@ -311,17 +311,37 @@ def generate():
     user_answers = session.get('user_answers', {})
     env_sample = session.get('env_sample', {})
 
-    merged_env = {
-        key: user_answers.get(key, env_sample.get(key, ""))  # Fallback to empty string if key is missing in both
-        for key in env_sample.keys()  # Use keys from env_sample to ensure all keys are included
-    }
+    # Track which variables have been updated
+    updated_variables = []
+
+    # Merge user answers with env_sample
+    merged_env = {}
+    for key in env_sample.keys():
+        user_value = user_answers.get(key)
+        sample_value = env_sample.get(key, "")
+
+        # Use the user's value if it exists, otherwise fallback to the sample value
+        merged_env[key] = user_value if user_value is not None else sample_value
+
+        # Check if the variable is in the replaceable list and has been updated
+        if REPLACEABLE_ENV_VARIABLES and key in REPLACEABLE_ENV_VARIABLES:
+            # Fetch the value from os.getenv
+            env_value = os.getenv(key)
+            if env_value is not None:
+                merged_env[key] = env_value
+                updated_variables.append(key)
 
     # Generate .env content
     env_content = "\n".join([f"{key}={value}" for key, value in merged_env.items()])
 
+    # Generate a report of updated variables
+    update_report = "; ".join([f"{key} was updated to: {merged_env.get(key)}" for key in updated_variables])
+
+    # Return the .env file and the update report
     return (env_content, 200, {
         'Content-Type': 'text/plain',
-        'Content-Disposition': 'attachment; filename=".env"'
+        'Content-Disposition': 'attachment; filename=".env"',
+        'X-Updated-Variables': update_report  # Use a delimiter like "; " instead of newlines
     })
 
 def validate_env_variables():

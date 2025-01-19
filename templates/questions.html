@@ -292,8 +292,8 @@
       <form method="POST" id="questionsForm">
         <ul class="nav nav-tabs" id="questionTabs" role="tablist">
           <li class="nav-item">
-            <button class="nav-link {% if tab == 'mandatory' %}active{% endif %}" id="mandatory-tab"
-              data-bs-toggle="tab" data-bs-target="#mandatory" type="button" role="tab" aria-controls="mandatory"
+            <button class="nav-link {% if tab == 'mandatory' %}active{% endif %}" id="mandatory-tab" data-bs-toggle="tab"
+              data-bs-target="#mandatory" type="button" role="tab" aria-controls="mandatory"
               aria-selected="{{ 'true' if tab == 'mandatory' else 'false' }}">
               Mandatory
             </button>
@@ -315,9 +315,43 @@
             {% for question in questions_to_display %}
             <div class="form-group">
               <label>{{ question.question }}</label>
+              {% set current_value = user_answers.get(question.name, question.value) %}
+          
+              <!-- Radio Buttons for ON/OFF or ON/OFF -->
+              {% if current_value == 'ON' or current_value == 'OFF' or current_value == 'ON/OFF' %}
+              <div class="d-flex align-items-center">
+                <div class="form-check form-check-inline">
+                  <input class="form-check-input" type="radio" name="{{ question.name }}" value="ON" {% if current_value=='ON' %}
+                    checked {% endif %} onchange="updateEnvFile('{{ question.name }}', 'ON')">
+                  <label class="form-check-label label-input">ON</label>
+                </div>
+                <div class="form-check form-check-inline">
+                  <input class="form-check-input" type="radio" name="{{ question.name }}" value="OFF" {% if current_value=='OFF'
+                    %} checked {% endif %} onchange="updateEnvFile('{{ question.name }}', 'OFF')">
+                  <label class="form-check-label label-input">OFF</label>
+                </div>
+              </div>
+          
+              <!-- Radio Buttons for true/false -->
+              {% elif current_value == 'true' or current_value == 'false' %}
+              <div class="d-flex align-items-center">
+                <div class="form-check form-check-inline">
+                  <input class="form-check-input" type="radio" name="{{ question.name }}" value="true" {% if current_value=='true'
+                    %} checked {% endif %} onchange="updateEnvFile('{{ question.name }}', 'true')">
+                  <label class="form-check-label label-input">True</label>
+                </div>
+                <div class="form-check form-check-inline">
+                  <input class="form-check-input" type="radio" name="{{ question.name }}" value="false" {% if
+                    current_value=='false' %} checked {% endif %} onchange="updateEnvFile('{{ question.name }}', 'false')">
+                  <label class="form-check-label label-input">False</label>
+                </div>
+              </div>
+          
+              <!-- Text Input for Other Values -->
+              {% else %}
               <input type="text" class="form-control" id="{{ question.name }}" name="{{ question.name }}"
-                value="{{ user_answers.get(question.name, question.value) }}" required
-                onblur="updateEnvFile('{{ question.name }}', this.value)">
+                value="{{ current_value }}" required onblur="updateEnvFile('{{ question.name }}', this.value)">
+              {% endif %}
             </div>
             {% endfor %}
             {% else %}
@@ -325,18 +359,52 @@
             {% endif %}
             {% endif %}
           </div>
-
+          
           <!-- Non-Mandatory Tab -->
-          <div class="tab-pane fade {% if tab == 'nonMandatory' %}show active{% endif %}" id="nonMandatory"
-            role="tabpanel" aria-labelledby="nonMandatory-tab">
+          <div class="tab-pane fade {% if tab == 'nonMandatory' %}show active{% endif %}" id="nonMandatory" role="tabpanel"
+            aria-labelledby="nonMandatory-tab">
             {% if tab == 'nonMandatory' %}
             {% if questions_to_display %}
             {% for question in questions_to_display %}
             <div class="form-group">
               <label>{{ question.question }}</label>
+              {% set current_value = user_answers.get(question.name, question.value) %}
+          
+              <!-- Radio Buttons for ON/OFF or ON/OFF -->
+              {% if current_value == 'ON' or current_value == 'OFF' or current_value == 'ON/OFF' %}
+              <div class="d-flex align-items-center">
+                <div class="form-check form-check-inline">
+                  <input class="form-check-input" type="radio" name="{{ question.name }}" value="ON" {% if current_value=='ON' %}
+                    checked {% endif %} onchange="updateEnvFile('{{ question.name }}', 'ON')">
+                  <label class="form-check-label label-input">ON</label>
+                </div>
+                <div class="form-check form-check-inline">
+                  <input class="form-check-input" type="radio" name="{{ question.name }}" value="OFF" {% if current_value=='OFF'
+                    %} checked {% endif %} onchange="updateEnvFile('{{ question.name }}', 'OFF')">
+                  <label class="form-check-label label-input">OFF</label>
+                </div>
+              </div>
+          
+              <!-- Radio Buttons for true/false -->
+              {% elif current_value == 'true' or current_value == 'false' %}
+              <div class="d-flex align-items-center">
+                <div class="form-check form-check-inline">
+                  <input class="form-check-input" type="radio" name="{{ question.name }}" value="true" {% if current_value=='true'
+                    %} checked {% endif %} onchange="updateEnvFile('{{ question.name }}', 'true')">
+                  <label class="form-check-label label-input">True</label>
+                </div>
+                <div class="form-check form-check-inline">
+                  <input class="form-check-input" type="radio" name="{{ question.name }}" value="false" {% if
+                    current_value=='false' %} checked {% endif %} onchange="updateEnvFile('{{ question.name }}', 'false')">
+                  <label class="form-check-label label-input">False</label>
+                </div>
+              </div>
+          
+              <!-- Text Input for Other Values -->
+              {% else %}
               <input type="text" class="form-control" id="nonmandatory-{{ question.name }}" name="{{ question.name }}"
-                value="{{ user_answers.get(question.name, question.value) }}"
-                onblur="updateEnvFile('{{ question.name }}', this.value)">
+                value="{{ current_value }}" onblur="updateEnvFile('{{ question.name }}', this.value)">
+              {% endif %}
             </div>
             {% endfor %}
             {% else %}
@@ -344,7 +412,8 @@
             {% endif %}
             {% endif %}
           </div>
-
+    
+          <!-- Pagination for Mandatory Tab -->
           <div id="mandatory-pagination" class="pagination"
             style="display: {{ 'block' if tab == 'mandatory' else 'none' }}">
             {% if current_page > 1 %}
@@ -355,7 +424,8 @@
               href="{{ url_for('questions', mandatory_page=current_page+1, tab='mandatory') }}">Next</a>
               {% endif %}
           </div>
-
+    
+          <!-- Pagination for Non-Mandatory Tab -->
           <div id="non-mandatory-pagination" class="pagination"
             style="display: {{ 'block' if tab == 'nonMandatory' else 'none' }}">
             {% if current_page > 1 %}
@@ -363,11 +433,11 @@
             {% endif %}
             <span>Page {{ current_page }} of {{ total_pages }}</span>
             {% if current_page < total_pages %} <a
-              href="{{ url_for('questions', non_mandatory_page=current_page+1, tab='nonMandatory') }}">
-              Next</a>
+              href="{{ url_for('questions', non_mandatory_page=current_page+1, tab='nonMandatory') }}">Next</a>
               {% endif %}
           </div>
-
+    
+          <!-- Submit Button -->
           <div class="submit-button">
             <button type="button" class="btn btn-success" onclick="submitForm()">
               Download .env
