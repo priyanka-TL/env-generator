@@ -6,6 +6,7 @@ from io import BytesIO
 import openai
 from math import ceil
 from dotenv import load_dotenv
+import sqlite3
 
 from config import SERVICE_URLS, ENV_VARIABLES_URLS, REPLACEABLE_ENV_VARIABLES
 load_dotenv()
@@ -19,6 +20,93 @@ openai.api_key = os.getenv('OPENAI_API_KEY')
 
 app.config['MAX_QUESTIONS'] = int(os.getenv('MAX_QUESTIONS', 10))  # Configure max questions to ask
 app.config['SESSION_TYPE'] = 'filesystem' 
+
+DATABASE_FILE = os.getenv('DATABASE_FILE', 'env_gen.db') 
+
+def init_db():
+    """Initialize the SQLite database and create the questions table."""
+    conn = sqlite3.connect(DATABASE_FILE)
+    cursor = conn.cursor()
+
+    # Create questions table
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS questions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            service_name TEXT NOT NULL,
+            variable_name TEXT NOT NULL,
+            question TEXT NOT NULL,
+            is_mandatory BOOLEAN NOT NULL
+        )
+    """)
+
+    conn.commit()
+    conn.close()
+
+init_db()
+
+def fetch_questions_from_db(service_name):
+    """Fetch questions for a specific service from the database."""
+    conn = sqlite3.connect(DATABASE_FILE)
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT variable_name, question, is_mandatory
+        FROM questions
+        WHERE service_name = ?
+    """, (service_name,))
+    questions = cursor.fetchall()
+
+    conn.close()
+
+    # Format questions as a dictionary
+    return {
+        "mandatory": [
+            {"name": q[0], "question": q[1]}
+            for q in questions if q[2]  # is_mandatory is True
+        ],
+        "non_mandatory": [
+            {"name": q[0], "question": q[1]}
+            for q in questions if not q[2]  # is_mandatory is False
+        ]
+    }
+
+def check_and_fetch_missing_questions(service_name, env_variables, parsed_variables):
+    """Check if all keys exist in the database. If not, call AI and store missing questions."""
+    conn = sqlite3.connect(DATABASE_FILE)
+    cursor = conn.cursor()
+
+    # Fetch existing keys for the service
+    cursor.execute("""
+        SELECT variable_name
+        FROM questions
+        WHERE service_name = ?
+    """, (service_name,))
+    existing_keys = {row[0] for row in cursor.fetchall()}
+
+    # Find missing keys
+    all_keys = parsed_variables.get("all_keys", [])
+    missing_keys = set(all_keys) - existing_keys
+
+    if missing_keys:
+        # Generate questions for missing keys using AI
+        missing_questions = generate_questions({
+            key: env_variables.get(key, "Not defined")
+            for key in missing_keys
+        })
+
+        # Store missing questions in the database
+        for key, question in zip(missing_keys, missing_questions):
+            is_mandatory = key in parsed_variables.get("mandatory", [])
+
+            cursor.execute("""
+                INSERT INTO questions (service_name, variable_name, question, is_mandatory)
+                VALUES (?, ?, ?, ?)
+            """, (service_name, key, question, is_mandatory))
+
+        conn.commit()
+
+    conn.close()
+
 
 def fetch_file_content(url):
     """Fetch the content of a .env file from a GitHub URL."""
@@ -192,50 +280,35 @@ def fetch():
     # Parse .env and JavaScript variables
     env_variables = parse_env_file(env_content)  # This returns a key-value dictionary
     parsed_variables = parse_env_variables_js(variables_content)
-    # Extract default values
-    default_values = parsed_variables.get('default_values', {})
 
-    # Add missing keys from envVariable.js to the non-mandatory section
-    for key in parsed_variables.get('all_keys', []):
-        if key not in env_variables:
-            env_variables[key] = default_values.get(key, "")
+    # Check for missing keys and fetch questions from AI if needed
+    check_and_fetch_missing_questions(service_name, env_variables, parsed_variables)
 
-    # Generate questions using key-value pairs
-    mandatory_questions = generate_questions({
-        name: env_variables.get(name, "Not defined")
-        for name in parsed_variables.get('mandatory', [])
-    })
+    # Fetch questions from the database
+    questions = fetch_questions_from_db(service_name)
 
-    non_mandatory_questions = generate_questions({
-        name: env_variables.get(name, "Not defined")
-        for name in parsed_variables.get('non_mandatory', [])
-    })
+    # Add default values from parsed_variables and .env sample values
+    default_values = parsed_variables.get("default_values", {})
+    for question in questions["mandatory"] + questions["non_mandatory"]:
+        question_name = question["name"]
+        # Use .env sample value if available, otherwise use default value
+        question["value"] = env_variables.get(question_name, default_values.get(question_name, ""))
 
-    # Combine variables and questions
-    combined_variables = {
-        "mandatory": [
-            {
-                "name": name,
-                "question": question,
-                "value": env_variables.get(name, "Not defined")
-            }
-            for name, question in zip(parsed_variables.get('mandatory', []), mandatory_questions)
-        ],
-        "non_mandatory": [
-            {
-                "name": name,
-                "question": question,
-                "value": env_variables.get(name, "Not defined")
-            }
-            for name, question in zip(parsed_variables.get('non_mandatory', []), non_mandatory_questions)
-        ]
-    }
+    # Initialize user_answers and env_sample with all keys from parsed_variables["all_keys"]
+    user_answers = {}
+    env_sample = {}
+
+    for key in parsed_variables["all_keys"]:
+        # Use .env sample value if available, otherwise use default value
+        value = env_variables.get(key, default_values.get(key, ""))
+        user_answers[key] = value
+        env_sample[key] = value
 
     # Store data in session
-    session['mandatory'] = combined_variables['mandatory']
-    session['non_mandatory'] = combined_variables['non_mandatory']
-    session['env_sample'] = env_variables  # Store the key-value pairs from .env.sample
-    session['user_answers'] = {}
+    session['mandatory'] = questions["mandatory"]
+    session['non_mandatory'] = questions["non_mandatory"]
+    session['env_sample'] = env_sample  # Store all keys with their values
+    session['user_answers'] = user_answers  # Store all keys with their values
 
     return redirect(url_for('questions'))
 
@@ -271,7 +344,7 @@ def questions():
         # Update user_answers with submitted form data
         for question in mandatory_questions + non_mandatory_questions:
             question_name = question['name']
-            user_answers[question_name] = form_data.get(question_name, user_answers.get(question_name, env_sample.get(question_name, "")))
+            user_answers[question_name] = form_data.get(question_name, user_answers.get(question_name, question.get("default_value", "")))
 
         # Save the updated answers back to the session
         session['user_answers'] = user_answers

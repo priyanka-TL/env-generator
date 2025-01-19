@@ -514,7 +514,7 @@
     function updateEnvFile(key, value) {
       const envUpdateMessage = document.getElementById('envUpdateMessage');
       const valueElement = document.getElementById(`value-${key}`);
-
+      
       if (valueElement) {
         envUpdateMessage.style.display = 'block';
         valueElement.textContent = value;
