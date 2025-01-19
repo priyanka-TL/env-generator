@@ -136,6 +136,7 @@ def parse_env_variables_js(content):
 
     mandatory = []
     non_mandatory = []
+    all_keys = []
 
     if matches:
         for var_name, var_optional in matches:
@@ -144,8 +145,18 @@ def parse_env_variables_js(content):
                 non_mandatory.append(var_name)
             else:
                 mandatory.append(var_name)
+            all_keys.append(var_name)
+        
+        # Extract default values
+        default_pattern = r'([A-Z_]+):\s*{[^}]*default:\s*([^,}]+)[^}]*}'
+        default_matches = re.findall(default_pattern, content)
 
-        return {"mandatory": mandatory, "non_mandatory": non_mandatory}
+        default_values = {}
+        for var_name, default_value in default_matches:
+            default_value = default_value.strip().strip('"').strip("'")
+            default_values[var_name] = default_value
+
+        return {"mandatory": mandatory, "non_mandatory": non_mandatory, "all_keys": all_keys, "default_values": default_values}
     else:
         raise ValueError("Could not parse the JavaScript environment variables. Ensure the object is defined correctly.")
 
@@ -181,6 +192,13 @@ def fetch():
     # Parse .env and JavaScript variables
     env_variables = parse_env_file(env_content)  # This returns a key-value dictionary
     parsed_variables = parse_env_variables_js(variables_content)
+    # Extract default values
+    default_values = parsed_variables.get('default_values', {})
+
+    # Add missing keys from envVariable.js to the non-mandatory section
+    for key in parsed_variables.get('all_keys', []):
+        if key not in env_variables:
+            env_variables[key] = default_values.get(key, "")
 
     # Generate questions using key-value pairs
     mandatory_questions = generate_questions({
@@ -258,9 +276,6 @@ def questions():
         # Save the updated answers back to the session
         session['user_answers'] = user_answers
         session.modified = True
-
-        print("Updated user_answers:", user_answers)
-
         # Redirect to the generate route to download the .env file
         return redirect(url_for('generate'))
 
