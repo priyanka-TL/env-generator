@@ -516,6 +516,7 @@
       const valueElement = document.getElementById(`value-${key}`);
       
       if (valueElement) {
+        envFileContent.style.display = 'none';
         envUpdateMessage.style.display = 'block';
         valueElement.textContent = value;
 
@@ -531,11 +532,15 @@
           .then(response => response.json())
           .then(data => {
             console.log('Answer saved:', data);
-            envUpdateMessage.style.display = 'none';
+            setTimeout(() => {
+              envUpdateMessage.style.display = 'none';
+              envFileContent.style.display = 'block';
+            }, 300); 
           })
           .catch(error => {
             console.error('Error saving answer:', error);
             envUpdateMessage.style.display = 'none';
+            envFileContent.style.display = 'block';
           });
       }
     }
