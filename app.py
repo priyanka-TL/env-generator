@@ -1,12 +1,13 @@
 import os
 import re
 import requests
-from flask import Flask, request, render_template, redirect, url_for, session, jsonify
+from flask import Flask, request, render_template, redirect, url_for, session, jsonify, send_file
 from io import BytesIO
 import openai
 from math import ceil
 from dotenv import load_dotenv
 import sqlite3
+import io
 
 from config import SERVICE_URLS, ENV_VARIABLES_URLS, REPLACEABLE_ENV_VARIABLES
 load_dotenv()
@@ -414,7 +415,7 @@ def generate():
     # Return the .env file and the update report
     return (env_content, 200, {
         'Content-Type': 'text/plain',
-        'Content-Disposition': 'attachment; filename=".env"',
+        'Content-Disposition': 'attachment; filename="_env"',
         'X-Updated-Variables': update_report  # Use a delimiter like "; " instead of newlines
     })
 
