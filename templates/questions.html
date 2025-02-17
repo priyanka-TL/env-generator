@@ -2,222 +2,548 @@
 <html lang="en">
 
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Review and Update Values</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Review and Update Environment Variables</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/css/bootstrap.min.css" />
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/js/bootstrap.bundle.min.js"></script>
+  <style>
+    /* Global Styles */
+    body {
+      background-color: #f8f9fa;
+      font-family: "Roboto", sans-serif;
+      margin: 0;
+      padding: 0;
+      scrollbar-color: #007BFF #f8f9fa;
+      /* Blue thumb, light gray track */
+      scrollbar-width: thin;
+    }
 
 
-    <style>
-        body {
-            background-color: #f4f5f7;
-            font-family: 'Roboto', sans-serif;
-            position: relative; /* To allow positioning of the home button */
-        }
 
-        .container {
-            max-width: 1200px;
-            background-color: #fff;
-            border-radius: 12px;
-            padding: 50px;
-            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
-            margin: 60px auto;
-        }
+    body::-webkit-scrollbar {
+      width: 8px;
+      /* Set width of the scrollbar */
+    }
 
-        h1 {
-            text-align: center;
-            font-size: 2.0rem;
-            color: #0056b3;
-            margin-bottom: 50px;
-        }
+    body::-webkit-scrollbar-track {
+      background: #f8f9fa;
+      /* Light gray background for track */
+      border-radius: 8px;
+    }
 
-        .form-group {
-            margin-bottom: 30px;
-        }
+    body::-webkit-scrollbar-thumb {
+      background-color: #007BFF;
+      /* Blue color for the thumb */
+      border-radius: 8px;
+      border: 2px solid #f8f9fa;
+      /* Adds a border around the thumb */
+    }
 
-        .form-group label {
-            font-weight: 500;
-            font-size: 1.1rem;
-            color: #333;
-            margin-bottom: 10px;
-            display: block;
-        }
+    body::-webkit-scrollbar-thumb:hover {
+      background-color: #0056B3;
+      /* Darker blue for hover */
+    }
 
-        .form-control {
-            border-radius: 10px;
-            font-size: 1.0rem;
-            padding: 12px;
-            border: 1px solid #ccc;
-        }
+    .container {
+      display: flex;
+      flex-direction: row;
+      height: 95vh;
+      margin: 20px auto;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      overflow: hidden;
+      background-color: #ffffff;
+    }
 
-        .form-check-inline {
-            margin-right: 20px;
-        }
+    .left-container,
+    .right-container {
+      flex: 1;
+      padding: 20px;
+      overflow-y: auto;
+      border-radius: 12px;
+      scrollbar-color: #007BFF #f8f9fa;
+      /* Blue thumb, light gray track */
+      scrollbar-width: thin;
+    }
 
-        .form-check-label {
-            font-size: 1rem;
-        }
+    .left-container {
+      margin-right: 10px;
+    }
 
-        .btn-custom {
-            background-color: #6c757d; /* Updated Previous button color */
-            color: #fff;
-            font-weight: 500;
-            font-size: 1.2rem;
-            border-radius: 10px;
-            padding: 12px 35px;
-        }
+    .right-container {
+      border-left: 2px solid #e9ecef;
+    }
 
-        .btn-custom:hover {
-            background-color: #5a6268;
-        }
+    h4 {
+      font-size: 1.6rem;
+      font-weight: 600;
+      color: #343a40;
+      /* Dark gray color for the heading text */
+      margin-bottom: 20px;
+      text-align: left;
+      padding-bottom: 8px;
+    }
 
-        .btn-custom-success {
-            background-color: #28a745;
-            color: #fff;
-            font-weight: 500;
-            font-size: 1.2rem;
-            border-radius: 10px;
-            padding: 12px 35px;
-        }
+    .left-container h4 {
+      color: #6c757d;
+      /* Blue for the left container heading */
+    }
 
-        .btn-custom-success:hover {
-            background-color: #218838;
-        }
+    .right-container h4 {
+      color: #6c757d;
+    }
 
-        .pagination-text {
-            margin-top: 30px;
-            font-weight: 500;
-            text-align: center;
-            font-size: 1rem;
-        }
+    /* Form Styles */
+    .form-group {
+      margin-bottom: 20px;
+    }
 
-        .divider {
-            height: 1px;
-            background-color: #ddd;
-            margin: 30px 0;
-        }
+    .form-group label {
+      font-weight: 500;
+      display: block;
+      margin-bottom: 8px;
+      color: #495057;
+    }
 
-        /* Updated Progress Bar Color */
-        .progress-bar {
-            background-color: #20c997; /* Teal color for the progress bar */
-            height: 0.7rem !important;
-        }
+    .form-control {
+      border-radius: 8px;
+      padding: 12px;
+      border: 1px solid #ced4da;
+      transition: border-color 0.3s ease, box-shadow 0.3s ease;
+    }
 
-        .label-input {
-            font-weight: 400 !important;
-        }
+    .form-control:focus {
+      border-color: #495057;
+      /* Teal for focus */
+      box-shadow: 0 0 5px rgba(32, 201, 151, 0.5);
+    }
 
-        .btn-home {
-            background-color: #007bff;
-            color: #fff;
-            font-weight: 500;
-            font-size: 1.0rem;
-            border-radius: 10px;
-            padding: 8px 20px;
-            text-decoration: none;
-            display: inline-block;
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
+    /* Tabs Styles */
+    .nav-tabs {
+      border-bottom: 2px solid #e9ecef;
+      margin-bottom: 20px;
+    }
 
-        .btn-home:hover {
-            background-color: #0056b3;
-        }
+    .nav-tabs .nav-link {
+      font-size: 1rem;
+      color: #495057;
+      border: none;
+      border-radius: 8px 8px 0 0;
+      padding: 10px 20px;
+      transition: background-color 0.3s ease, color 0.3s ease;
+    }
 
-        .btn-home i {
-            margin-right: 8px;
-            font-size: 1.4rem; /* Adjusted for smaller arrow */
-        }
-    </style>
+    .nav-tabs .nav-link.active {
+      background-color: #0056B3;
+      /* Teal for active tab */
+      color: #fff;
+      border-radius: 8px;
+    }
+
+    .nav-tabs .nav-link:hover {
+      background-color: #0056B3;
+      color: #fff
+    }
+
+    /* Pagination Styles */
+    .pagination {
+      margin-top: 30px;
+      text-align: center;
+    }
+
+    .pagination a {
+      margin: 0 5px;
+      padding: 8px 15px;
+      background-color: #007BFF;
+      /* Teal for pagination */
+      color: white;
+      text-decoration: none;
+      border-radius: 5px;
+      transition: background-color 0.3s ease;
+    }
+
+    .pagination a:hover {
+      background-color: #5BC0DE;
+      /* Darker teal for hover */
+    }
+
+    /* .env File Content Styles */
+    #envFileContent {
+      overflow: visible;
+      padding: 1vh;
+      background-color: #ffffff;
+    }
+
+    #envFileContent p {
+      margin: 0;
+      padding: 8px 0;
+      font-family: "Courier New", monospace;
+      font-size: 14px;
+      line-height: 1.5;
+      border-bottom: 1px solid #e9ecef;
+    }
+
+    .env-key {
+      color: #343A40;
+      /* Teal for keys */
+      font-weight: bold;
+    }
+
+    .env-value {
+      color: #495057;
+      /* Dark gray for values */
+      word-break: break-all;
+      /* Ensure long values don't overflow */
+    }
+
+    /* Submit Button Styles */
+    .submit-button {
+      display: flex;
+      justify-content: flex-end;
+      margin-top: 30px;
+    }
+
+    .btn-success {
+      background-color: #008080;
+      /* Teal for buttons */
+      border: none;
+      padding: 10px 20px;
+      border-radius: 8px;
+      transition: background-color 0.3s ease;
+    }
+
+    .btn-success:hover {
+      background-color: #008080;
+      /* Darker teal for hover */
+    }
+
+    /* Home Button Styles */
+    .home-button {
+      position: fixed;
+      top: 20px;
+      left: 20px;
+      background-color: #691A40;
+      /* Teal for home button */
+      color: #fff;
+      font-size: 1rem;
+      padding: 12px 18px;
+      border-radius: 5px;
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+      z-index: 999;
+      transition: background-color 0.3s ease;
+    }
+
+    .home-button:hover {
+      background-color: #691A40;
+      /* Darker teal for hover */
+      text-decoration: none;
+    }
+
+    .left-container::-webkit-scrollbar,
+    .right-container::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    .left-container::-webkit-scrollbar-track,
+    .right-container::-webkit-scrollbar-track {
+      background: #f8f9fa;
+    }
+
+    .left-container::-webkit-scrollbar-thumb,
+    .right-container::-webkit-scrollbar-thumb {
+      background-color: #007BFF;
+      border-radius: 8px;
+    }
+
+    .left-container::-webkit-scrollbar-thumb:hover,
+    .right-container::-webkit-scrollbar-thumb:hover {
+      background-color: #0056B3;
+    }
+
+    /* Responsive Design */
+    @media (max-width: 768px) {
+      .container {
+        flex-direction: column;
+        height: auto;
+      }
+
+      .left-container {
+        margin-right: 0;
+        margin-bottom: 10px;
+      }
+
+      .right-container {
+        border-left: none;
+      }
+    }
+  </style>
 </head>
 
 <body>
-    <!-- Home Button placed outside the modal, at top left -->
-    <a href="{{ url_for('home') }}" class="btn btn-home">
-        <i class="bi bi-arrow-left"></i> Home
-    </a>
-
-    <div class="container">
-        <h1>Review and Update Values</h1>
-
-        <!-- Progress Indicator -->
-        <div class="progress mb-4">
-            <div class="progress-bar" role="progressbar" style="width: {{ (page / total_pages) * 100 }}%;"
-                aria-valuenow="{{ page }}" aria-valuemin="0" aria-valuemax="{{ total_pages }}">
-                {{ (page / total_pages) * 100 | round }}%
-            </div>
-        </div>
-
-        <form method="POST" action="{{ url_for('questions', page=page) }}">
-            <div class="row">
-                {% for key, question in current_questions %}
-                <div class="col-lg-6">
-                    <div class="form-group">
-                        <label for="{{ key }}">{{ question }}</label>
-                        {% set current_value = session['answers'].get(key, env_variables.get(key)) %}
-
-                        {% if current_value == 'ON' or current_value == 'OFF' %}
-                        <div class="d-flex align-items-center">
-                            <div class="form-check form-check-inline">
-                                <input class="form-check-input" type="radio" name="{{ key }}" value="ON" {% if
-                                    current_value=='ON' %} checked {% endif %} required>
-                                <label class="form-check-label label-input">ON</label>
-                            </div>
-                            <div class="form-check form-check-inline">
-                                <input class="form-check-input" type="radio" name="{{ key }}" value="OFF" {% if
-                                    current_value=='OFF' %} checked {% endif %} required>
-                                <label class="form-check-label label-input">OFF</label>
-                            </div>
-                        </div>
-                        {% elif current_value == 'true' or current_value == 'false' %}
-                        <div class="d-flex align-items-center">
-                            <div class="form-check form-check-inline">
-                                <input class="form-check-input" type="radio" name="{{ key }}" value="true" {% if
-                                    current_value=='true' %} checked {% endif %} required>
-                                <label class="form-check-label label-input" >True</label>
-                            </div>
-                            <div class="form-check form-check-inline">
-                                <input class="form-check-input" type="radio" name="{{ key }}" value="false" {% if
-                                    current_value=='false' %} checked {% endif %} required>
-                                <label class="form-check-label label-input">False</label>
-                            </div>
-                        </div>
-                        {% else %}
-                        <input type="text" class="form-control" id="{{ key }}" name="{{ key }}"
-                            value="{{ current_value }}" required />
-                        {% endif %}
-                    </div>
+  <a href="/" class="home-button"> <i class="bi bi-house-door"></i> Home </a>
+  <div class="container">
+    <div class="left-container">
+      <h4>Environment Configuration Editor</h4>
+      <form method="POST" id="questionsForm">
+        <ul class="nav nav-tabs" id="questionTabs" role="tablist">
+          <li class="nav-item">
+            <button class="nav-link {% if tab == 'mandatory' %}active{% endif %}" id="mandatory-tab" data-bs-toggle="tab"
+              data-bs-target="#mandatory" type="button" role="tab" aria-controls="mandatory"
+              aria-selected="{{ 'true' if tab == 'mandatory' else 'false' }}">
+              Mandatory
+            </button>
+          </li>
+          <li class="nav-item">
+            <button class="nav-link {% if tab == 'nonMandatory' %}active{% endif %}" id="nonMandatory-tab"
+              data-bs-toggle="tab" data-bs-target="#nonMandatory" type="button" role="tab" aria-controls="nonMandatory"
+              aria-selected="{{ 'true' if tab == 'nonMandatory' else 'false' }}">
+              Non Mandatory
+            </button>
+          </li>
+        </ul>
+        <div class="tab-content" id="questionTabsContent">
+          <!-- Mandatory Tab -->
+          <div class="tab-pane fade {% if tab == 'mandatory' %}show active{% endif %}" id="mandatory" role="tabpanel"
+            aria-labelledby="mandatory-tab">
+            {% if tab == 'mandatory' %}
+            {% if questions_to_display %}
+            {% for question in questions_to_display %}
+            <div class="form-group">
+              <label>{{ question.question }}</label>
+              {% set current_value = user_answers.get(question.name, question.value) %}
+          
+              <!-- Radio Buttons for ON/OFF or ON/OFF -->
+              {% if current_value == 'ON' or current_value == 'OFF' or current_value == 'ON/OFF' %}
+              <div class="d-flex align-items-center">
+                <div class="form-check form-check-inline">
+                  <input class="form-check-input" type="radio" name="{{ question.name }}" value="ON" {% if current_value=='ON' %}
+                    checked {% endif %} onchange="updateEnvFile('{{ question.name }}', 'ON')">
+                  <label class="form-check-label label-input">ON</label>
                 </div>
-                {% endfor %}
+                <div class="form-check form-check-inline">
+                  <input class="form-check-input" type="radio" name="{{ question.name }}" value="OFF" {% if current_value=='OFF'
+                    %} checked {% endif %} onchange="updateEnvFile('{{ question.name }}', 'OFF')">
+                  <label class="form-check-label label-input">OFF</label>
+                </div>
+              </div>
+          
+              <!-- Radio Buttons for true/false -->
+              {% elif current_value == 'true' or current_value == 'false' %}
+              <div class="d-flex align-items-center">
+                <div class="form-check form-check-inline">
+                  <input class="form-check-input" type="radio" name="{{ question.name }}" value="true" {% if current_value=='true'
+                    %} checked {% endif %} onchange="updateEnvFile('{{ question.name }}', 'true')">
+                  <label class="form-check-label label-input">True</label>
+                </div>
+                <div class="form-check form-check-inline">
+                  <input class="form-check-input" type="radio" name="{{ question.name }}" value="false" {% if
+                    current_value=='false' %} checked {% endif %} onchange="updateEnvFile('{{ question.name }}', 'false')">
+                  <label class="form-check-label label-input">False</label>
+                </div>
+              </div>
+          
+              <!-- Text Input for Other Values -->
+              {% else %}
+              <input type="text" class="form-control" id="{{ question.name }}" name="{{ question.name }}"
+                value="{{ current_value }}" required onblur="updateEnvFile('{{ question.name }}', this.value)">
+              {% endif %}
             </div>
-
-            <div class="divider"></div>
-
-            <!-- Improved Button Alignment -->
-            <div class="d-flex justify-content-center gap-3 mt-4">
-                {% if page > 1 %}
-                <a href="{{ url_for('questions', page=page - 1) }}" class="btn btn-custom">Previous</a>
-                {% endif %}
-                {% if page < total_pages %} 
-                <button type="submit" class="btn btn-custom" style="background-color: #007bff;">Next</button>
-                {% else %}
-                <button type="submit" class="btn btn-custom-success">Submit</button>
-                {% endif %}
+            {% endfor %}
+            {% else %}
+            <p>No mandatory questions available.</p>
+            {% endif %}
+            {% endif %}
+          </div>
+          
+          <!-- Non-Mandatory Tab -->
+          <div class="tab-pane fade {% if tab == 'nonMandatory' %}show active{% endif %}" id="nonMandatory" role="tabpanel"
+            aria-labelledby="nonMandatory-tab">
+            {% if tab == 'nonMandatory' %}
+            {% if questions_to_display %}
+            {% for question in questions_to_display %}
+            <div class="form-group">
+              <label>{{ question.question }}</label>
+              {% set current_value = user_answers.get(question.name, question.value) %}
+          
+              <!-- Radio Buttons for ON/OFF or ON/OFF -->
+              {% if current_value == 'ON' or current_value == 'OFF' or current_value == 'ON/OFF' %}
+              <div class="d-flex align-items-center">
+                <div class="form-check form-check-inline">
+                  <input class="form-check-input" type="radio" name="{{ question.name }}" value="ON" {% if current_value=='ON' %}
+                    checked {% endif %} onchange="updateEnvFile('{{ question.name }}', 'ON')">
+                  <label class="form-check-label label-input">ON</label>
+                </div>
+                <div class="form-check form-check-inline">
+                  <input class="form-check-input" type="radio" name="{{ question.name }}" value="OFF" {% if current_value=='OFF'
+                    %} checked {% endif %} onchange="updateEnvFile('{{ question.name }}', 'OFF')">
+                  <label class="form-check-label label-input">OFF</label>
+                </div>
+              </div>
+          
+              <!-- Radio Buttons for true/false -->
+              {% elif current_value == 'true' or current_value == 'false' %}
+              <div class="d-flex align-items-center">
+                <div class="form-check form-check-inline">
+                  <input class="form-check-input" type="radio" name="{{ question.name }}" value="true" {% if current_value=='true'
+                    %} checked {% endif %} onchange="updateEnvFile('{{ question.name }}', 'true')">
+                  <label class="form-check-label label-input">True</label>
+                </div>
+                <div class="form-check form-check-inline">
+                  <input class="form-check-input" type="radio" name="{{ question.name }}" value="false" {% if
+                    current_value=='false' %} checked {% endif %} onchange="updateEnvFile('{{ question.name }}', 'false')">
+                  <label class="form-check-label label-input">False</label>
+                </div>
+              </div>
+          
+              <!-- Text Input for Other Values -->
+              {% else %}
+              <input type="text" class="form-control" id="nonmandatory-{{ question.name }}" name="{{ question.name }}"
+                value="{{ current_value }}" onblur="updateEnvFile('{{ question.name }}', this.value)">
+              {% endif %}
             </div>
-        </form>
-
-        <div class="pagination-text">
-            <p>Page {{ page }} of {{ total_pages }}</p>
+            {% endfor %}
+            {% else %}
+            <p>No non-mandatory questions available.</p>
+            {% endif %}
+            {% endif %}
+          </div>
+    
+          <!-- Pagination for Mandatory Tab -->
+          <div id="mandatory-pagination" class="pagination"
+            style="display: {{ 'block' if tab == 'mandatory' else 'none' }}">
+            {% if current_page > 1 %}
+            <a href="{{ url_for('questions', mandatory_page=current_page-1, tab='mandatory') }}">Previous</a>
+            {% endif %}
+            <span>Page {{ current_page }} of {{ total_pages }}</span>
+            {% if current_page < total_pages %} <a
+              href="{{ url_for('questions', mandatory_page=current_page+1, tab='mandatory') }}">Next</a>
+              {% endif %}
+          </div>
+    
+          <!-- Pagination for Non-Mandatory Tab -->
+          <div id="non-mandatory-pagination" class="pagination"
+            style="display: {{ 'block' if tab == 'nonMandatory' else 'none' }}">
+            {% if current_page > 1 %}
+            <a href="{{ url_for('questions', non_mandatory_page=current_page-1, tab='nonMandatory') }}">Previous</a>
+            {% endif %}
+            <span>Page {{ current_page }} of {{ total_pages }}</span>
+            {% if current_page < total_pages %} <a
+              href="{{ url_for('questions', non_mandatory_page=current_page+1, tab='nonMandatory') }}">Next</a>
+              {% endif %}
+          </div>
+    
+          <!-- Submit Button -->
+          <div class="submit-button">
+            <button type="button" class="btn btn-success" onclick="submitForm()">
+              Download .env
+            </button>
+          </div>
         </div>
+      </form>
     </div>
+    <div class="right-container">
+      <h4>Live Environment Variables</h4>
+      <div id="envUpdateMessage" class="text-center" style="display: none">
+        <p>Updating...</p>
+      </div>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+      <div id="envFileContent">
+        {% for key, value in env_sample.items() %}
+        <p id="env-{{ key }}">
+          <span class="env-key">{{ key }}</span>=<span class="env-value" id="value-{{ key }}">{{ user_answers.get(key,
+            value) }}</span>
+        </p>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      const mandatoryPagination = document.getElementById(
+        "mandatory-pagination"
+      );
+      const nonMandatoryPagination = document.getElementById(
+        "non-mandatory-pagination"
+      );
+      const mandatoryTab = document.getElementById("mandatory-tab");
+      const nonMandatoryTab = document.getElementById("nonMandatory-tab");
+
+      function updateURL(tab, page) {
+        const params = new URLSearchParams(window.location.search);
+        params.set("tab", tab);
+        if (tab === "mandatory") {
+          params.set("mandatory_page", page);
+          params.delete("non_mandatory_page");
+        } else if (tab === "nonMandatory") {
+          params.set("non_mandatory_page", page);
+          params.delete("mandatory_page");
+        }
+        window.location.search = `?${params.toString()}`; // Trigger reload with new URL
+      }
+
+      // Handle tab changes
+      mandatoryTab.addEventListener("click", () => updateURL("mandatory", 1));
+      nonMandatoryTab.addEventListener("click", () =>
+        updateURL("nonMandatory", 1)
+      );
+
+      // Handle pagination clicks (event delegation)
+      document.addEventListener("click", (event) => {
+        if (
+          event.target.tagName === "A" &&
+          event.target.closest(".pagination")
+        ) {
+          event.preventDefault(); // Prevent default link behavior
+          const tab = mandatoryTab.classList.contains("active")
+            ? "mandatory"
+            : "nonMandatory";
+          const targetPage = new URL(event.target.href).searchParams.get(
+            tab === "mandatory" ? "mandatory_page" : "non_mandatory_page"
+          );
+          updateURL(tab, targetPage);
+        }
+      });
+    });
+
+    function updateEnvFile(key, value) {
+      const envUpdateMessage = document.getElementById('envUpdateMessage');
+      const valueElement = document.getElementById(`value-${key}`);
+
+      if (valueElement) {
+        envUpdateMessage.style.display = 'block';
+        valueElement.textContent = value;
+
+        // Save the updated value via AJAX
+        fetch('/update_answer', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+          },
+          body: JSON.stringify({ key: key, value: value })
+        })
+          .then(response => response.json())
+          .then(data => {
+            console.log('Answer saved:', data);
+            envUpdateMessage.style.display = 'none';
+          })
+          .catch(error => {
+            console.error('Error saving answer:', error);
+            envUpdateMessage.style.display = 'none';
+          });
+      }
+    }
+
+    function submitForm() {
+      window.location.href = "{{ url_for('generate') }}";
+    }
+  </script>
 </body>
 
 </html>

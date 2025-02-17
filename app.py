@@ -1,10 +1,13 @@
 import os
-import random
+import re
 import requests
-from flask import Flask, request, render_template, redirect, url_for, session, jsonify, send_file
+from flask import Flask, request, render_template, redirect, url_for, session, jsonify
 from io import BytesIO
 import openai
+from math import ceil
 from dotenv import load_dotenv
+
+from config import SERVICE_URLS, ENV_VARIABLES_URLS, REPLACEABLE_ENV_VARIABLES
 load_dotenv()
 
 # Initialize Flask app
@@ -12,159 +15,408 @@ app = Flask(__name__)
 app.secret_key = os.getenv('SECRET_KEY', 'your_default_secret_key')  # Use environment variable for secret key
 
 # OpenAI API key
-openai.api_key = os.getenv('SECRET_KEY')
+openai.api_key = os.getenv('OPENAI_API_KEY')
 
 app.config['MAX_QUESTIONS'] = int(os.getenv('MAX_QUESTIONS', 10))  # Configure max questions to ask
+app.config['SESSION_TYPE'] = 'filesystem' 
 
-def convert_to_raw_url(github_url):
-    """Convert GitHub file URL to raw URL."""
-    # Replace 'github.com' with 'raw.githubusercontent.com' and adjust the file path
-    raw_url = github_url.replace('github.com', 'raw.githubusercontent.com')
-    raw_url = raw_url.replace('/blob/', '/')
-    return raw_url
-
-def fetch_env_file(github_url):
+def fetch_file_content(url):
     """Fetch the content of a .env file from a GitHub URL."""
     try:
-        raw_url = convert_to_raw_url(github_url)
-        response = requests.get(raw_url)
+        response = requests.get(url)
         response.raise_for_status()
         return response.text
     except requests.RequestException as e:
         return str(e)
 
 def parse_env_file(env_content):
-    """Parse the .env content into a dictionary."""
+    """
+    Parse the .env content into a dictionary.
+    
+    Args:
+        env_content (str): The content of the .env file as a string.
+        
+    Returns:
+        dict: A dictionary of environment variables.
+    """
     env_variables = {}
     for line in env_content.splitlines():
+        # Remove leading and trailing whitespace
         line = line.strip()
-        # Skip empty lines or lines that don't contain '='
-        if line and '=' in line:
-            try:
-                key, value = line.split('=', 1)
-                env_variables[key] = value
-            except ValueError:
-                # Log or handle lines that still don't split correctly
-                print(f"Skipping invalid line: {line}")
+
+        # Skip empty lines and full-line comments
+        if not line or line.startswith("#"):
+            continue
+
+        # Handle inline comments (anything after a space + #)
+        line = re.split(r'\s+#', line, maxsplit=1)[0].strip()
+
+        # Match key=value lines
+        match = re.match(r'^([\w\-.]+)\s*=\s*(.+)$', line)
+        if match:
+            key, value = match.groups()
+
+            # Handle quoted values (strip surrounding quotes)
+            if value.startswith(("'", '"')) and value.endswith(("'", '"')):
+                value = value[1:-1]
+
+            # Remove any additional surrounding spaces
+            value = value.strip()
+
+            # Add to dictionary
+            env_variables[key] = value
         else:
-            # Optionally log or handle lines that are empty or malformed
-            print(f"Skipping empty or malformed line: {line}")
+            # Log invalid lines for debugging
+            print(f"Skipping invalid line: {line}")
+
     return env_variables
 
 def generate_questions(env_variables):
-    """Use OpenAI API to generate a readable question for an environment variable."""
-    # prompt = f"Create a question for key '{key}' and value '{value}'."
-    prompt = "For the following environment variables, generate one question per key-value pair. Do not include any extra text or introduction, only the questions:\n\n"
+    """
+    Use OpenAI API to generate meaningful questions for environment variables using their keys and values.
+
+    Args:
+        env_variables (dict): A dictionary of environment variable key-value pairs.
+
+    Returns:
+        list: A list of generated questions.
+    """
+    # Create a prompt using key-value pairs
+    prompt = (
+        "For the following environment variables, generate one clear and user-friendly question per key-value pair. "
+        "The questions should be easy to understand and should provide context about what the variable is used for. "
+        "Do not include any extra text or introduction, only the questions:\n\n"
+        "- For each key-value pair, generate a question that explains what the variable does and asks for its value.\n"
+        "- Use simple and concise language.\n"
+        "- Avoid technical jargon unless necessary.\n"
+        "- If the key name is descriptive, use it to form the question.\n"
+        "- If the key name is not descriptive, infer its purpose based on common naming conventions.\n\n"
+        "Example:\n"
+        "- For `APPLICATION_PORT=3000`, the question could be: 'What port should the application run on?'\n"
+        "- For `DATABASE_URL=postgres://user:password@localhost:5432/mydb`, the question could be: 'What is the connection URL for the database?'\n\n"
+        "Now, generate questions for the following key-value pairs:\n"
+    )
     for key, value in env_variables.items():
-        prompt += f"- {key} with value {value}\n"
-    print(f"Prompt: {prompt}") 
+        prompt += f"- {key}={value}\n"
+
     try:
         response = openai.ChatCompletion.create(
-            model="gpt-4o-mini",
+            model="gpt-4",
             messages=[
                 {"role": "system", "content": "You are a helpful assistant."},
                 {"role": "user", "content": prompt}
             ],
             max_tokens=500
         )
-        print(f"Response: {response}") 
-        questions = response['choices'][0]['message']['content'].strip()
-        question_list = questions.split("\n")
-        # question_list = ['What is the value of ACCESS_TOKEN_SECRET?  ', "What is the API_DOC_URL for the application's documentation?  ", 'What is the endpoint for retrieving user profile details?  ', 'What is the minimum approval required in the application?  ', 'What types of resources are defined in RESOURCE_TYPES?  ', 'What is the region of the OCI bucket?  ', 'What is the maximum length for resource notes?  ', 'Is logging disabled in the application?  ', 'What is the URL for the Kafka server?  ', 'What authentication method is being used in the application?  ', 'What is the OCI access key ID?  ', 'What is the Azure account key?  ', 'Are observations enabled in projects?  ', 'What is the value for CLEAR_INTERNAL_CACHE?  ', 'What is the Kafka topic used for project publishing?  ', 'What is the host URL for the user service?  ', 'What is the region of the AWS bucket?  ', 'What is the endpoint for publishing templates and tasks?  ', 'Is review required before proceeding?  ', 'What is the base URL for the user service?']
-        print(question_list,'question_list')
-        return question_list
+        # Parse the response into a list of questions
+        questions = response['choices'][0]['message']['content'].strip().split("\n")
+        return questions
     except Exception as e:
         print(f"Error: {e}")
-        return f"Enter a value for {key}."
+        # Fallback questions in case of an API error
+        return [f"What is the value of {key}?" for key in env_variables.keys()]
 
 @app.route('/')
 def home():
-    return render_template('home.html')
+    return render_template('home.html', services=SERVICE_URLS.keys())
+
+def parse_env_variables_js(content):
+    """
+    Parses the JavaScript environment variable definitions into mandatory and non-mandatory categories.
+
+    Args:
+        content (str): The JavaScript content containing environment variable definitions.
+
+    Returns:
+        dict: A dictionary with 'mandatory' and 'non_mandatory' lists of variables.
+    """
+    pattern = r'([A-Z_]+):\s*{[^}]*optional:\s*(true|false)[^}]*}'
+    # Find all matches
+    matches = re.findall(pattern, content)
+
+    mandatory = []
+    non_mandatory = []
+    all_keys = []
+
+    if matches:
+        for var_name, var_optional in matches:
+            # Categorize based on the 'optional' field
+            if var_optional == 'true':
+                non_mandatory.append(var_name)
+            else:
+                mandatory.append(var_name)
+            all_keys.append(var_name)
+        
+        # Extract default values
+        default_pattern = r'([A-Z_]+):\s*{[^}]*default:\s*([^,}]+)[^}]*}'
+        default_matches = re.findall(default_pattern, content)
+
+        default_values = {}
+        for var_name, default_value in default_matches:
+            default_value = default_value.strip().strip('"').strip("'")
+            default_values[var_name] = default_value
+
+        return {"mandatory": mandatory, "non_mandatory": non_mandatory, "all_keys": all_keys, "default_values": default_values}
+    else:
+        raise ValueError("Could not parse the JavaScript environment variables. Ensure the object is defined correctly.")
 
 @app.route('/fetch', methods=['POST'])
 def fetch():
-    github_url = request.form['github_url']
-    env_content = fetch_env_file(github_url)
+    service_name = request.form.get('service')
 
-    if env_content.startswith('http') or "Error" in env_content:
-        # Return an error message that will be displayed in the HTML
-        return render_template('home.html', error_message=f"Error fetching .env file: {env_content}")
-
-    env_variables = parse_env_file(env_content)
-    print(env_variables,'hhh')
-    session['env_variables'] = env_variables
-    session['answers'] = {}
-    session['index'] = 0  # Track the current question index
+    # Validate service selection
+    if not service_name or service_name not in SERVICE_URLS:
+        return render_template(
+            'home.html',
+            services=SERVICE_URLS.keys(),
+            error_message="Invalid service selected. Please try again."
+        )
     
-    # Randomly select MAX_QUESTIONS number of keys to ask
-    keys = list(env_variables.keys())
-    selected_keys = random.sample(keys, app.config['MAX_QUESTIONS'])
-    selected_env_variables = {key: env_variables[key] for key in selected_keys}
-    session['questions'] = generate_questions(selected_env_variables)
-    session['selected_keys'] = selected_keys
+    # Clear session data
+    session.pop('mandatory', None)
+    session.pop('non_mandatory', None)
+    session.pop('env_sample', None)
+    session.pop('user_answers', None)
+
+    # Fetch env files
+    env_url = SERVICE_URLS[service_name]
+    variables_url = ENV_VARIABLES_URLS[service_name]
+
+    env_content = fetch_file_content(env_url)
+    variables_content = fetch_file_content(variables_url)
+
+    if not env_content or "Error" in env_content:
+        return render_template('home.html', services=SERVICE_URLS.keys(),
+                               error_message=f"Error fetching .env file: {env_content}")
+    
+    # Parse .env and JavaScript variables
+    env_variables = parse_env_file(env_content)  # This returns a key-value dictionary
+    parsed_variables = parse_env_variables_js(variables_content)
+    # Extract default values
+    default_values = parsed_variables.get('default_values', {})
+
+    # Add missing keys from envVariable.js to the non-mandatory section
+    for key in parsed_variables.get('all_keys', []):
+        if key not in env_variables:
+            env_variables[key] = default_values.get(key, "")
+
+    # Generate questions using key-value pairs
+    mandatory_questions = generate_questions({
+        name: env_variables.get(name, "Not defined")
+        for name in parsed_variables.get('mandatory', [])
+    })
+
+    non_mandatory_questions = generate_questions({
+        name: env_variables.get(name, "Not defined")
+        for name in parsed_variables.get('non_mandatory', [])
+    })
+
+    # Combine variables and questions
+    combined_variables = {
+        "mandatory": [
+            {
+                "name": name,
+                "question": question,
+                "value": env_variables.get(name, "Not defined")
+            }
+            for name, question in zip(parsed_variables.get('mandatory', []), mandatory_questions)
+        ],
+        "non_mandatory": [
+            {
+                "name": name,
+                "question": question,
+                "value": env_variables.get(name, "Not defined")
+            }
+            for name, question in zip(parsed_variables.get('non_mandatory', []), non_mandatory_questions)
+        ]
+    }
+
+    # Store data in session
+    session['mandatory'] = combined_variables['mandatory']
+    session['non_mandatory'] = combined_variables['non_mandatory']
+    session['env_sample'] = env_variables  # Store the key-value pairs from .env.sample
+    session['user_answers'] = {}
 
     return redirect(url_for('questions'))
 
 @app.route('/questions', methods=['GET', 'POST'])
 def questions():
-    questions = session.get('questions', [])
-    selected_keys = session.get('selected_keys', [])
-    env_variables = session.get('env_variables', {})
-    answers = session.get('answers', {})
+    mandatory_questions = session.get('mandatory', [])
+    non_mandatory_questions = session.get('non_mandatory', [])
+    user_answers = session.get('user_answers', {})
+    env_sample = session.get('env_sample', {})
 
-    page = int(request.args.get('page', 1))
-    questions_per_page = 5
-    start = (page - 1) * questions_per_page
-    end = start + questions_per_page
+    current_tab = request.args.get('tab', 'mandatory')  # Default to 'mandatory'
+    page_size = app.config.get('MAX_QUESTIONS', 10)
 
-    total_pages = (len(questions) + questions_per_page - 1) // questions_per_page
-    current_questions = zip(selected_keys[start:end], questions[start:end])
+    if current_tab == 'mandatory':
+        questions = mandatory_questions
+        page_key = 'mandatory_page'
+    else:
+        questions = non_mandatory_questions
+        page_key = 'non_mandatory_page'
+
+    current_page = int(request.args.get(page_key, 1))
+    total_pages = ceil(len(questions) / page_size)
+
+    # Ensure current_page is within valid bounds
+    current_page = max(1, min(current_page, total_pages))
+    start_index = (current_page - 1) * page_size
+    end_index = start_index + page_size
+    questions_to_display = questions[start_index:end_index]
 
     if request.method == 'POST':
-        for key in selected_keys[start:end]:
-            current_value = request.form.get(key, env_variables.get(key, ''))
-            
-            # Check if the current_value is 'ON', 'OFF', 'true', or 'false'
-            if current_value in ['ON', 'OFF', 'true', 'false']:
-                answers[key] = current_value
-            else:
-                # Default: Use the value from form or existing answer
-                answers[key] = request.form.get(key, session['answers'].get(key, env_variables.get(key, '')))
-        
-        session['answers'] = answers
+        form_data = request.form.to_dict()
 
-        if page < total_pages:
-            return redirect(url_for('questions', page=page + 1))
-        else:
-            return redirect(url_for('generate'))
+        # Update user_answers with submitted form data
+        for question in mandatory_questions + non_mandatory_questions:
+            question_name = question['name']
+            user_answers[question_name] = form_data.get(question_name, user_answers.get(question_name, env_sample.get(question_name, "")))
+
+        # Save the updated answers back to the session
+        session['user_answers'] = user_answers
+        session.modified = True
+        # Redirect to the generate route to download the .env file
+        return redirect(url_for('generate'))
 
     return render_template(
         'questions.html',
-        current_questions=current_questions,
-        page=page,
+        questions_to_display=questions_to_display,
+        user_answers=user_answers,
+        env_sample=env_sample,
+        current_page=current_page,
         total_pages=total_pages,
-        env_variables=env_variables
+        tab=current_tab  # Pass the current_tab to the template
     )
 
+@app.route('/update_answer', methods=['POST'])
+def update_answer():
+    data = request.get_json()
+    key = data.get('key')
+    value = data.get('value')
 
+    if not key:
+        return jsonify({"error": "Key is required"}), 400
+
+    # Update user_answers in the session
+    user_answers = session.get('user_answers', {})
+    user_answers[key] = value
+    session['user_answers'] = user_answers
+    session.modified = True
+
+    return jsonify({"success": True, "key": key, "value": value})
 
 @app.route('/generate', methods=['GET'])
 def generate():
-    env_variables = session.get('env_variables', {})
-    answers = session.get('answers', {})
+    user_answers = session.get('user_answers', {})
+    env_sample = session.get('env_sample', {})
 
-    # Combine all the environment variables with the user's answers
-    updated_env = [
-        f"{key}={answers.get(key, value)}"  # Use the user's answer if available, otherwise the default value
-        for key, value in env_variables.items()
+    # Track which variables have been updated
+    updated_variables = []
+
+    # Merge user answers with env_sample
+    merged_env = {}
+    for key in env_sample.keys():
+        user_value = user_answers.get(key)
+        sample_value = env_sample.get(key, "")
+
+        # Use the user's value if it exists, otherwise fallback to the sample value
+        merged_env[key] = user_value if user_value is not None else sample_value
+
+        # Check if the variable is in the replaceable list and has been updated
+        if REPLACEABLE_ENV_VARIABLES and key in REPLACEABLE_ENV_VARIABLES:
+            # Fetch the value from os.getenv
+            env_value = os.getenv(key)
+            if env_value is not None:
+                merged_env[key] = env_value
+                updated_variables.append(key)
+
+    # Generate .env content
+    env_content = "\n".join([f"{key}={value}" for key, value in merged_env.items()])
+
+    # Generate a report of updated variables
+    update_report = "; ".join([f"{key} was updated to: {merged_env.get(key)}" for key in updated_variables])
+
+    # Return the .env file and the update report
+    return (env_content, 200, {
+        'Content-Type': 'text/plain',
+        'Content-Disposition': 'attachment; filename=".env"',
+        'X-Updated-Variables': update_report  # Use a delimiter like "; " instead of newlines
+    })
+
+def validate_env_variables():
+    """
+    Validate that all required environment variables are set.
+    If any variable is missing, raise an error and provide a table format.
+    """
+    required_env_vars = [
+        {
+            "name": "SECRET_KEY",
+            "description": "Flask secret key for session encryption"
+        },
+        {
+            "name": "OPENAI_API_KEY",
+            "description": "API key for OpenAI services"
+        },
+        {
+            "name": "CLOUD_STORAGE_PROVIDER",
+            "description": "Cloud storage provider in azure, aws, gcloud, oci or s3"
+        },
+        {
+            "name": "CLOUD_STORAGE_ACCOUNTNAME",
+            "description": "Cloud storage identity [Azure Account Name, AWS Access Key, GCP Client Email, OCI S3 Access Key or S3 Access Key]"
+        },
+        {
+            "name": "CLOUD_STORAGE_SECRET",
+            "description": "Cloud storage secret"
+        },
+        {
+            "name": "CLOUD_STORAGE_REGION",
+            "description": "Cloud storage region for AWS and OCI only"
+        },
+        {
+            "name": "CLOUD_ENDPOINT",
+            "description": "Cloud storage endpoint for S3 and OCI only"
+        },
+        {
+            "name": "CLOUD_STORAGE_BUCKETNAME",
+            "description": "Cloud storage default bucket name"
+        },
+        {
+            "name": "PUBLIC_ASSET_BUCKETNAME",
+            "description": "Cloud storage public bucket name"
+        },
+        {
+            "name": "CLOUD_STORAGE_BUCKET_TYPE",
+            "description": "Cloud storage default bucket type"
+        }
     ]
 
-    env_content = "\n".join(updated_env)
-    env_file = BytesIO()
-    env_file.write(env_content.encode('utf-8'))
-    env_file.seek(0)
+    # Extract missing variables
+    missing_vars = [var for var in required_env_vars if not os.getenv(var["name"])]
 
-    return send_file(env_file, as_attachment=True, download_name=".env", mimetype='text/plain')
+    if missing_vars:
+        # Create a table format for missing variables
+        table_header = f"{'Variable Name':<30} | {'Description':<40}\n" + "-" * 73
+        table_rows = "\n".join([
+            f"{var['name']:<30} | {var['description']:<40}" 
+            for var in missing_vars
+        ])
+
+        message = (
+            "The following required environment variables are missing or not set:\n"
+            "Please ensure that all required variables are defined in the environment or .env file.\n"
+        )
+
+        # Raise an error with only the table format
+        raise EnvironmentError(f"\n{message}{table_header}\n{table_rows}")
+
+# Call the validation function before starting the app
+try:
+    validate_env_variables()
+except EnvironmentError as e:
+    print(e)  # Cleanly print the error message (the table in this case)
+    exit(1)  
 
 if __name__ == '__main__':
     app.run(debug=True)

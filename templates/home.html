@@ -6,7 +6,7 @@
     <title>Environment File Generator</title>
     <style>
         body {
-            font-family: 'Arial', sans-serif;
+            font-family: Arial, sans-serif;
             background-color: #f9f9f9;
             margin: 0;
             padding: 0;
@@ -19,61 +19,107 @@
         .container {
             background-color: #fff;
             padding: 40px;
-            box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.1);
-            border-radius: 8px;
-            width: 100%;
-            max-width: 600px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+            width: 90%;
+            max-width: 700px; /* Larger maximum width */
+            box-sizing: border-box;
         }
 
         h1 {
+            font-size: 28px; /* Larger font size */
             color: #333;
             text-align: center;
-            font-size: 24px;
-            margin-bottom: 20px;
+            margin-bottom: 30px;
         }
 
         label {
             font-size: 16px;
             color: #555;
-            margin-bottom: 8px;
             display: block;
+            margin-bottom: 10px;
         }
 
-        input[type="url"] {
+        select {
             width: 100%;
-            padding: 10px;
-            margin: 8px 0 20px 0;
-            border: 1px solid #ccc;
-            border-radius: 4px;
+            padding: 12px;
             font-size: 16px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            margin-bottom: 20px;
             box-sizing: border-box;
+            background-color: #fff;
+            cursor: pointer;
+        }
+
+        select:focus {
+            border-color: #691A40;
+            outline: none;
         }
 
         button {
             width: 100%;
-            padding: 12px;
-            font-size: 16px;
-            color: white;
-            background-color: #4CAF50;
+            padding: 14px;
+            font-size: 18px;
+            background-color: #691A40;
+            color: #fff;
             border: none;
-            border-radius: 4px;
+            border-radius: 6px;
             cursor: pointer;
             transition: background-color 0.3s;
         }
 
         button:hover {
-            background-color: #45a049;
+            background-color: #691A40;
         }
 
         .message {
-            margin-top: 20px;
-            font-size: 16px;
-            color: #4CAF50;
             text-align: center;
+            font-size: 16px;
+            margin-top: 15px;
         }
 
         .message.error {
             color: #f44336;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .container {
+                padding: 30px;
+            }
+
+            h1 {
+                font-size: 24px;
+            }
+
+            label {
+                font-size: 14px;
+            }
+
+            select, button {
+                font-size: 14px;
+                padding: 10px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .container {
+                padding: 20px;
+            }
+
+            h1 {
+                font-size: 20px;
+            }
+
+            label {
+                font-size: 12px;
+            }
+
+            select, button {
+                font-size: 12px;
+                padding: 8px;
+            }
         }
     </style>
 </head>
@@ -81,11 +127,23 @@
     <div class="container">
         <h1>Environment File Generator</h1>
         <form action="/fetch" method="POST">
-            <label for="github_url">Enter GitHub URL of .env.sample file:</label>
-            <input type="url" id="github_url" name="github_url" placeholder="https://github.com/user/repo/.env.sample" required>
+            <label for="service">Choose the service:</label>
+            <select id="service" name="service" required>
+                <option value="" disabled selected>Select a service</option>
+                <option value="survey-project-creation-service">Survey Project Creation Portal</option>
+                <option value="mentoring">Mentoring</option>
+                <option value="project-service">Elevate Project</option>
+                <option value="samiksha-service">Elevate Samiksha</option>
+                <option value="user">User</option>
+                <option value="entity-management">Entity Management</option>
+                <option value="scheduler">Scheduler</option>
+                <option value="notification">Notification</option>
+                <option value="interface-service">Interface</option>
+            </select>
+
             <button type="submit">Fetch</button>
         </form>
-        <!-- Example success or error message -->
+
         {% if error_message %}
         <div class="message error">
             {{ error_message }}
@@ -93,5 +151,19 @@
         {% endif %}
     </div>
 
+    <script>
+        // Custom validation message for the select field
+        const serviceSelect = document.getElementById('service');
+        const form = document.getElementById('serviceForm');
+
+        serviceSelect.addEventListener('invalid', () => {
+            serviceSelect.setCustomValidity("Please select a service from the list.");
+        });
+
+        serviceSelect.addEventListener('change', () => {
+            // Clear the custom message once the user selects a valid option
+            serviceSelect.setCustomValidity("");
+        });
+    </script>
 </body>
 </html>
